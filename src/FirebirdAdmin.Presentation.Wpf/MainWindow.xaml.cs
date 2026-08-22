@@ -1,4 +1,5 @@
 using FirebirdAdmin.Presentation.Wpf.Shell;
+using ScottPlot;
 
 namespace FirebirdAdmin.Presentation.Wpf;
 
@@ -11,6 +12,31 @@ public partial class MainWindow
         this.viewModel = viewModel;
         InitializeComponent();
         DataContext = viewModel;
+        viewModel.Dashboard.ActivityChanged += Dashboard_OnActivityChanged;
+        UpdateActivityPlot();
+    }
+
+    private void Dashboard_OnActivityChanged(object? sender, EventArgs e)
+    {
+        UpdateActivityPlot();
+    }
+
+    private void UpdateActivityPlot()
+    {
+        if (ActivityPlot is null)
+        {
+            return;
+        }
+
+        ActivityPlot.Plot.Clear();
+        var values = viewModel.Dashboard.GetActivityValues();
+        if (values.Length > 0)
+        {
+            ActivityPlot.Plot.Add.Signal(values);
+        }
+
+        ActivityPlot.Plot.Axes.AutoScale();
+        ActivityPlot.Refresh();
     }
 
     private async void SaveProfileButton_OnClick(object sender, System.Windows.RoutedEventArgs e)

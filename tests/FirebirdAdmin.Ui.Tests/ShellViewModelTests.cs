@@ -1,5 +1,7 @@
 using FirebirdAdmin.Application.Connections;
+using FirebirdAdmin.Application.Dashboard;
 using FirebirdAdmin.Application.Monitoring;
+using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Shell;
@@ -37,7 +39,9 @@ public sealed class ShellViewModelTests
         viewModel.ConnectionState.Should().Be(ShellConnectionState.Connected);
         viewModel.HasActiveConnection.Should().BeTrue();
         viewModel.ConnectionContext.Should().Contain("Firebird");
-        viewModel.TransactionsWorkspace.State.Should().Be(TransactionsWorkspaceState.Ready);
+        await WaitUntilAsync(() => viewModel.TransactionsWorkspace.State == TransactionsWorkspaceState.Ready);
+        viewModel.Dashboard.Health.Should().Be(DatabaseHealthStatus.Healthy);
+        viewModel.Dashboard.Metrics.Should().Contain(metric => metric.Key == "transactions" && metric.Value == "1");
     }
 
     [Fact]
@@ -59,7 +63,17 @@ public sealed class ShellViewModelTests
             new FakeCredentialStore(),
             new FakeFirebirdConnectionService(connectionShouldFail),
             new FakeMonitoringSessionService(),
-            new TransactionsWorkspaceViewModel());
+            new TransactionsWorkspaceViewModel(),
+            new DashboardViewModel(new DashboardProjectionService()));
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        while (!condition())
+        {
+            await Task.Delay(20, timeout.Token);
+        }
     }
 
     private sealed class FakeConnectionProfileService : IConnectionProfileService

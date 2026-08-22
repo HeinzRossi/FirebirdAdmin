@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Monitoring;
+using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 
@@ -53,13 +54,15 @@ public sealed partial class ShellViewModel : ObservableObject
         ICredentialStore credentialStore,
         IFirebirdConnectionService firebirdConnectionService,
         IMonitoringSessionService monitoringSessionService,
-        TransactionsWorkspaceViewModel transactionsWorkspace)
+        TransactionsWorkspaceViewModel transactionsWorkspace,
+        DashboardViewModel dashboard)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
         this.firebirdConnectionService = firebirdConnectionService;
         this.monitoringSessionService = monitoringSessionService;
         TransactionsWorkspace = transactionsWorkspace;
+        Dashboard = dashboard;
 
         NavigationItems =
         [
@@ -96,6 +99,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public bool IsTraceRunning => false;
     public bool IsPollingRunning => false;
     public ObservableCollection<ShellNavigationItem> NavigationItems { get; }
+    public DashboardViewModel Dashboard { get; }
     public TransactionsWorkspaceViewModel TransactionsWorkspace { get; }
 
     public string ConnectionContext => ActiveConnection is null
@@ -200,6 +204,7 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             await foreach (var snapshot in monitoringSessionService.ReadAllAsync(cancellationToken))
             {
+                Dashboard.ApplySnapshot(snapshot);
                 TransactionsWorkspace.ApplySnapshot(snapshot);
             }
         }
@@ -208,6 +213,7 @@ public sealed partial class ShellViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            Dashboard.SetError(ex.Message);
             TransactionsWorkspace.SetError(ex.Message);
         }
     }
