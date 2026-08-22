@@ -71,18 +71,119 @@
                                Text="{Binding WorkspaceTitle}"
                                Style="{DynamicResource Text.PageTitle}"/>
 
-                    <Border Grid.Row="1"
-                            Margin="0,16,0,0"
-                            Style="{DynamicResource Card.Workspace}">
-                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <TextBlock Text="{Binding ReadyStatus}"
-                                       Style="{DynamicResource Text.EmptyStateTitle}"
-                                       TextAlignment="Center"/>
-                            <TextBlock Text="{Binding WorkspacePlaceholder}"
-                                       Style="{DynamicResource Text.EmptyStateBody}"
-                                       TextAlignment="Center"
-                                       Margin="0,8,0,0"/>
-                        </StackPanel>
+                    <Border Grid.Row="1" Margin="0,16,0,0" Style="{DynamicResource Card.Workspace}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="420"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="{Binding ConnectionProfilesTitle}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                                <TextBlock Text="{Binding WorkspacePlaceholder}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,16" TextWrapping="Wrap"/>
+
+                                <TextBlock Text="{Binding NameLabel}" Style="{DynamicResource Text.StatusBar}"/>
+                                <TextBox Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+
+                                <TextBlock Text="{Binding HostLabel}" Style="{DynamicResource Text.StatusBar}"/>
+                                <TextBox Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+
+                                <TextBlock Text="{Binding PortLabel}" Style="{DynamicResource Text.StatusBar}"/>
+                                <TextBox Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+
+                                <TextBlock Text="{Binding DatabaseLabel}" Style="{DynamicResource Text.StatusBar}"/>
+                                <TextBox Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+
+                                <TextBlock Text="{Binding UserNameLabel}" Style="{DynamicResource Text.StatusBar}"/>
+                                <TextBox Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+
+                                <TextBlock Text="{Binding PasswordLabel}" Style="{DynamicResource Text.StatusBar}"/>
+                                <PasswordBox x:Name="PasswordInput" Margin="0,4,0,10"/>
+
+                                <TextBlock Text="{Binding RoleLabel}" Style="{DynamicResource Text.StatusBar}"/>
+                                <TextBox Text="{Binding Role, UpdateSourceTrigger=PropertyChanged}" Margin="0,4,0,10"/>
+
+                                <CheckBox Content="{Binding RememberPasswordLabel}"
+                                          IsChecked="{Binding RememberPassword}"
+                                          Margin="0,2,0,14"/>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="{Binding SaveProfileLabel}" Click="SaveProfileButton_OnClick" MinWidth="110"/>
+                                    <Button Content="{Binding TestConnectionLabel}" Click="TestConnectionButton_OnClick" MinWidth="130" Margin="8,0,0,0"/>
+                                    <Button Content="{Binding ConnectLabel}" Click="ConnectButton_OnClick" MinWidth="100" Margin="8,0,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Grid Grid.Column="1"
+                                    Margin="32,0,0,0"
+                                    DataContext="{Binding TransactionsWorkspace}">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="150"/>
+                                </Grid.RowDefinitions>
+
+                                <DockPanel Grid.Row="0">
+                                    <StackPanel>
+                                        <TextBlock Text="Monitoramento - Transações" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                                        <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0"/>
+                                    </StackPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0">
+                                            <TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding TransactionCount, StringFormat=Transações: {0}}"/>
+                                        </Border>
+                                        <Border Style="{DynamicResource Badge.Neutral}">
+                                            <TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveTransactionCount, StringFormat=Ativas: {0}}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <Grid Grid.Row="1" Margin="0,16,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Filtro SQL/ID" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}"/>
+                                </Grid>
+
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding Transactions}"
+                                          SelectedItem="{Binding SelectedTransaction}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          IsReadOnly="True"
+                                          EnableRowVirtualization="True"
+                                          EnableColumnVirtualization="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Transaction" Binding="{Binding TransactionId}" Width="100"/>
+                                        <DataGridTextColumn Header="Attachment" Binding="{Binding AttachmentId}" Width="100"/>
+                                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="80"/>
+                                        <DataGridTextColumn Header="Started" Binding="{Binding StartedAt}" Width="160"/>
+                                        <DataGridTextColumn Header="OIT" Binding="{Binding OldestTransaction}" Width="90"/>
+                                        <DataGridTextColumn Header="OAT" Binding="{Binding OldestActive}" Width="90"/>
+                                        <DataGridTextColumn Header="Isolation" Binding="{Binding IsolationMode}" Width="90"/>
+                                        <DataGridTextColumn Header="Lock Timeout" Binding="{Binding LockTimeout}" Width="110"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <Border Grid.Row="3"
+                                        Margin="0,12,0,0"
+                                        Background="{DynamicResource Brush.App.Background}"
+                                        BorderBrush="{DynamicResource Brush.Border.Subtle}"
+                                        BorderThickness="1"
+                                        CornerRadius="{DynamicResource Radius.L}"
+                                        Padding="{DynamicResource Spacing.Thickness.L}">
+                                    <StackPanel>
+                                        <TextBlock Text="Detalhes da transação" Style="{DynamicResource Text.NavigationItem}"/>
+                                        <TextBlock Text="{Binding SelectedTransaction.TransactionId, StringFormat=ID: {0}}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,0"/>
+                                        <TextBlock Text="{Binding SelectedTransaction.AttachmentId, StringFormat=Attachment: {0}}" Style="{DynamicResource Text.EmptyStateBody}"/>
+                                        <TextBlock Text="{Binding SelectedTransaction.StartedAt, StringFormat=Início: {0}}" Style="{DynamicResource Text.EmptyStateBody}"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Grid>
                     </Border>
                 </Grid>
             </Grid>

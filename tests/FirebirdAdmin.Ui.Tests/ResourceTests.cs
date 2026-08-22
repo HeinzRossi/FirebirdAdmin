@@ -10,6 +10,8 @@ public sealed class ResourceTests
     {
         AppStrings.AppName.Should().Be("Firebird Admin");
         AppStrings.ConnectionContextEmpty.Should().NotBeNullOrWhiteSpace();
+        AppStrings.Connect.Should().Be("Conectar");
+        AppStrings.TestConnection.Should().NotBeNullOrWhiteSpace();
         AppStrings.WorkspacePlaceholder.Should().Contain("Sprint 1");
     }
 }

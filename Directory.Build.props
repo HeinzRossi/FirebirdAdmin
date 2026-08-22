@@ -6,6 +6,6 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-    <NoWarn>$(NoWarn);CA1707;NU1701</NoWarn>
+    <NoWarn>$(NoWarn);CA1707;NU1701;CA1416</NoWarn>
   </PropertyGroup>
 </Project>
