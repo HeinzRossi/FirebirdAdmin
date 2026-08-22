@@ -4,6 +4,7 @@ using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
+using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.Shell;
@@ -55,7 +56,8 @@ public sealed partial class ShellViewModel : ObservableObject
         IFirebirdConnectionService firebirdConnectionService,
         IMonitoringSessionService monitoringSessionService,
         TransactionsWorkspaceViewModel transactionsWorkspace,
-        DashboardViewModel dashboard)
+        DashboardViewModel dashboard,
+        ProfilerWorkspaceViewModel profilerWorkspace)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
@@ -63,6 +65,7 @@ public sealed partial class ShellViewModel : ObservableObject
         this.monitoringSessionService = monitoringSessionService;
         TransactionsWorkspace = transactionsWorkspace;
         Dashboard = dashboard;
+        ProfilerWorkspace = profilerWorkspace;
 
         NavigationItems =
         [
@@ -91,16 +94,25 @@ public sealed partial class ShellViewModel : ObservableObject
     public string SaveProfileLabel => AppStrings.SaveProfile;
     public string TestConnectionLabel => AppStrings.TestConnection;
     public string ConnectLabel => AppStrings.Connect;
-    public string TraceStatus => AppStrings.TraceStopped;
+    public string TraceStatus => ProfilerWorkspace.State switch
+    {
+        Application.Profiler.ProfilerState.Running => "Trace em execução",
+        Application.Profiler.ProfilerState.Starting => "Trace iniciando",
+        Application.Profiler.ProfilerState.PausedView => "Trace capturando, visual pausada",
+        Application.Profiler.ProfilerState.Stopping => "Trace encerrando",
+        Application.Profiler.ProfilerState.Failed => "Trace com falha",
+        _ => AppStrings.TraceStopped
+    };
     public string PollingStatus => AppStrings.PollingStopped;
     public string WorkspaceTitle => AppStrings.Dashboard;
     public bool IsNavigationExpanded => true;
     public bool HasActiveConnection => ActiveConnection is not null;
-    public bool IsTraceRunning => false;
+    public bool IsTraceRunning => ProfilerWorkspace.State is Application.Profiler.ProfilerState.Running;
     public bool IsPollingRunning => false;
     public ObservableCollection<ShellNavigationItem> NavigationItems { get; }
     public DashboardViewModel Dashboard { get; }
     public TransactionsWorkspaceViewModel TransactionsWorkspace { get; }
+    public ProfilerWorkspaceViewModel ProfilerWorkspace { get; }
 
     public string ConnectionContext => ActiveConnection is null
         ? AppStrings.ConnectionContextEmpty
@@ -171,6 +183,7 @@ public sealed partial class ShellViewModel : ObservableObject
             if (setActiveConnection)
             {
                 ActiveConnection = context;
+                ProfilerWorkspace.SetReady();
                 await StartMonitoringAsync(profile, providedSecret ?? savedSecret, context, cancellationToken);
             }
 
@@ -182,6 +195,40 @@ public sealed partial class ShellViewModel : ObservableObject
             ConnectionState = ShellConnectionState.ConnectionFailed;
             OperationMessage = ex.Message;
         }
+    }
+
+    public async Task StartProfilerAsync(string password, CancellationToken cancellationToken = default)
+    {
+        if (ActiveConnection is null)
+        {
+            ProfilerWorkspace.SetFailed("Conecte a um banco antes de iniciar o SQL Profiler.");
+            return;
+        }
+
+        using var providedSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
+        using var savedSecret = providedSecret is null ? await credentialStore.TryLoadAsync(ActiveConnection.ProfileId, cancellationToken) : null;
+        await ProfilerWorkspace.StartAsync(ActiveConnection, providedSecret ?? savedSecret, cancellationToken);
+        OnPropertyChanged(nameof(TraceStatus));
+        OnPropertyChanged(nameof(IsTraceRunning));
+    }
+
+    public async Task StopProfilerAsync(CancellationToken cancellationToken = default)
+    {
+        await ProfilerWorkspace.StopAsync(cancellationToken);
+        OnPropertyChanged(nameof(TraceStatus));
+        OnPropertyChanged(nameof(IsTraceRunning));
+    }
+
+    public void PauseProfilerView()
+    {
+        ProfilerWorkspace.PauseView();
+        OnPropertyChanged(nameof(TraceStatus));
+    }
+
+    public void ResumeProfilerFollow()
+    {
+        ProfilerWorkspace.ResumeFollow();
+        OnPropertyChanged(nameof(TraceStatus));
     }
 
     private async Task StartMonitoringAsync(

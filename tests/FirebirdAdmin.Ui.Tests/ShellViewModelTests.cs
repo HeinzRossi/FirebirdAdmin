@@ -1,8 +1,10 @@
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Dashboard;
 using FirebirdAdmin.Application.Monitoring;
+using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
+using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Shell;
 using FluentAssertions;
@@ -64,7 +66,8 @@ public sealed class ShellViewModelTests
             new FakeFirebirdConnectionService(connectionShouldFail),
             new FakeMonitoringSessionService(),
             new TransactionsWorkspaceViewModel(),
-            new DashboardViewModel(new DashboardProjectionService()));
+            new DashboardViewModel(new DashboardProjectionService()),
+            new ProfilerWorkspaceViewModel(new FakeProfilerSessionService()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -161,6 +164,29 @@ public sealed class ShellViewModelTests
         public async IAsyncEnumerable<MonitoringSnapshot> ReadAllAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             yield return snapshot;
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+    }
+
+    private sealed class FakeProfilerSessionService : IProfilerSessionService
+    {
+        public ProfilerState State { get; private set; } = ProfilerState.Disconnected;
+
+        public Task<ProfilerSession> StartAsync(ProfilerOptions options, CredentialSecret? password, CancellationToken cancellationToken)
+        {
+            State = ProfilerState.Running;
+            return Task.FromResult(new ProfilerSession(Guid.NewGuid(), options.SessionName, DateTimeOffset.UtcNow, State));
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            State = ProfilerState.Ready;
+            return Task.CompletedTask;
+        }
+
+        public async IAsyncEnumerable<ProfilerEvent> ReadAllAsync([System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            yield return new ProfilerEvent(1, DateTimeOffset.UtcNow, TraceEventType.StatementFinished, TimeSpan.FromMilliseconds(2), "SYSDBA", 7, 8, "select 1 from rdb$database", new ProfilerMetrics(), null, "raw");
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         }
     }

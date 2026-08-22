@@ -120,6 +120,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="*"/>
+                                    <RowDefinition Height="260"/>
                                 </Grid.RowDefinitions>
 
                                 <Grid Grid.Row="0"
@@ -244,6 +245,87 @@
                                         <TextBlock Text="{Binding SelectedTransaction.StartedAt, StringFormat=Início: {0}}" Style="{DynamicResource Text.EmptyStateBody}"/>
                                     </StackPanel>
                                 </Border>
+                                </Grid>
+
+                                <Grid Grid.Row="2"
+                                      Margin="0,18,0,0"
+                                      DataContext="{Binding ProfilerWorkspace}">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="88"/>
+                                    </Grid.RowDefinitions>
+
+                                    <DockPanel Grid.Row="0">
+                                        <StackPanel>
+                                            <TextBlock Text="SQL Profiler" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                                            <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0"/>
+                                        </StackPanel>
+                                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                                            <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0">
+                                                <TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding StateText}"/>
+                                            </Border>
+                                            <Border Style="{DynamicResource Badge.Neutral}">
+                                                <TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding BufferedCount, StringFormat=Buffer: {0}}"/>
+                                            </Border>
+                                        </StackPanel>
+                                    </DockPanel>
+
+                                    <Grid Grid.Row="1" Margin="0,12,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0" Content="Iniciar" Click="StartProfilerButton_OnClick" MinWidth="78"/>
+                                        <Button Grid.Column="1" Content="Pausar visual" Click="PauseProfilerButton_OnClick" MinWidth="108" Margin="8,0,0,0"/>
+                                        <Button Grid.Column="2" Content="Follow" Click="FollowProfilerButton_OnClick" MinWidth="78" Margin="8,0,0,0"/>
+                                        <Button Grid.Column="3" Content="Encerrar" Click="StopProfilerButton_OnClick" MinWidth="84" Margin="8,0,0,0"/>
+                                        <Button Grid.Column="4" Content="Limpar" Click="ClearProfilerButton_OnClick" MinWidth="78" Margin="8,0,0,0"/>
+                                        <TextBox Grid.Column="5" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Margin="12,0,0,0"/>
+                                    </Grid>
+
+                                    <DataGrid Grid.Row="2"
+                                              ItemsSource="{Binding Events}"
+                                              SelectedItem="{Binding SelectedEvent}"
+                                              AutoGenerateColumns="False"
+                                              CanUserAddRows="False"
+                                              IsReadOnly="True"
+                                              EnableRowVirtualization="True"
+                                              EnableColumnVirtualization="True">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="#" Binding="{Binding Sequence}" Width="64"/>
+                                            <DataGridTextColumn Header="Hora" Binding="{Binding Timestamp}" Width="95"/>
+                                            <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="120"/>
+                                            <DataGridTextColumn Header="ms" Binding="{Binding Duration}" Width="70"/>
+                                            <DataGridTextColumn Header="Usuário" Binding="{Binding UserName}" Width="90"/>
+                                            <DataGridTextColumn Header="Att" Binding="{Binding AttachmentId}" Width="70"/>
+                                            <DataGridTextColumn Header="Tra" Binding="{Binding TransactionId}" Width="70"/>
+                                            <DataGridTextColumn Header="SQL / Trace" Binding="{Binding SqlPreview}" Width="*"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+
+                                    <TabControl Grid.Row="3" Margin="0,8,0,0">
+                                        <TabItem Header="SQL">
+                                            <TextBox Text="{Binding SelectedSql, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/>
+                                        </TabItem>
+                                        <TabItem Header="Performance">
+                                            <TextBox Text="{Binding SelectedPerformance, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/>
+                                        </TabItem>
+                                        <TabItem Header="Contexto">
+                                            <TextBox Text="{Binding SelectedContext, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/>
+                                        </TabItem>
+                                        <TabItem Header="Plano">
+                                            <TextBox Text="{Binding SelectedPlan, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/>
+                                        </TabItem>
+                                        <TabItem Header="Trace">
+                                            <TextBox Text="{Binding SelectedRawTrace, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/>
+                                        </TabItem>
+                                    </TabControl>
                                 </Grid>
                             </Grid>
                         </Grid>

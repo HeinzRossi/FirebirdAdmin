@@ -1,8 +1,10 @@
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Monitoring;
+using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Infrastructure.Connections;
 using FirebirdAdmin.Infrastructure.Monitoring;
 using FirebirdAdmin.Infrastructure.Persistence;
+using FirebirdAdmin.Infrastructure.Profiler;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +29,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IFirebirdCapabilitiesResolver, FirebirdCapabilitiesResolver>();
         services.AddSingleton<IFirebirdToolsetDiscoveryService, FirebirdToolsetDiscoveryService>();
         services.AddScoped<IMonitoringQueryStrategy, FirebirdMonitoringQueryStrategy>();
+        services.AddSingleton<ITraceConfigurationBuilder, TraceConfigurationBuilder>();
+        services.AddSingleton<ITraceProcessRunner, TraceProcessRunner>();
+        services.AddSingleton<IProfilerSessionService, FbTraceManagerProfilerSessionService>();
 
         return services;
     }

@@ -53,4 +53,29 @@ public partial class MainWindow
     {
         await viewModel.ConnectAsync(PasswordInput.Password);
     }
+
+    private async void StartProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.StartProfilerAsync(PasswordInput.Password);
+    }
+
+    private async void StopProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.StopProfilerAsync();
+    }
+
+    private void PauseProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        viewModel.PauseProfilerView();
+    }
+
+    private void FollowProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        viewModel.ResumeProfilerFollow();
+    }
+
+    private void ClearProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        viewModel.ProfilerWorkspace.Clear();
+    }
 }
