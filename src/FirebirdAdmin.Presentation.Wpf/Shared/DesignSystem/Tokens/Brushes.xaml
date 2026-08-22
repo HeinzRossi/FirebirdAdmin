@@ -1,0 +1,12 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Brush.App.Background" Color="{DynamicResource Color.Neutral.50}"/>
+    <SolidColorBrush x:Key="Brush.App.Foreground" Color="{DynamicResource Color.Neutral.900}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Navigation" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Raised" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Surface.StatusBar" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Workspace" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Border.Subtle" Color="{DynamicResource Color.Neutral.100}"/>
+    <SolidColorBrush x:Key="Brush.Text.Muted" Color="{DynamicResource Color.Neutral.500}"/>
+    <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource Color.Accent.600}"/>
+</ResourceDictionary>

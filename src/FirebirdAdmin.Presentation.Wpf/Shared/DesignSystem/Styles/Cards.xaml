@@ -1,0 +1,17 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="Card.NavigationItem" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{DynamicResource Radius.M}"/>
+        <Setter Property="Padding" Value="{DynamicResource Spacing.Thickness.M}"/>
+        <Setter Property="Margin" Value="0,0,0,6"/>
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style x:Key="Card.Workspace" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{DynamicResource Radius.L}"/>
+        <Setter Property="Padding" Value="{DynamicResource Spacing.Thickness.XL}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Workspace}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Effect" Value="{DynamicResource Shadow.Card}"/>
+    </Style>
+</ResourceDictionary>

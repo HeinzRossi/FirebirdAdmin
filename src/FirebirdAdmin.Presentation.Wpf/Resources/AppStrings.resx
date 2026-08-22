@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AppName" xml:space="preserve">
+    <value>Firebird Admin</value>
+  </data>
+  <data name="ConnectionContextEmpty" xml:space="preserve">
+    <value>Nenhuma conexão ativa</value>
+  </data>
+  <data name="Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Diagnostics" xml:space="preserve">
+    <value>Diagnóstico</value>
+  </data>
+  <data name="History" xml:space="preserve">
+    <value>Histórico</value>
+  </data>
+  <data name="Maintenance" xml:space="preserve">
+    <value>Manutenção</value>
+  </data>
+  <data name="Metadata" xml:space="preserve">
+    <value>Metadata</value>
+  </data>
+  <data name="Monitoring" xml:space="preserve">
+    <value>Monitoramento</value>
+  </data>
+  <data name="NavigationTitle" xml:space="preserve">
+    <value>Navegação</value>
+  </data>
+  <data name="PollingStopped" xml:space="preserve">
+    <value>Polling parado</value>
+  </data>
+  <data name="ReadyStatus" xml:space="preserve">
+    <value>Aplicação pronta</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Configurações</value>
+  </data>
+  <data name="SqlProfiler" xml:space="preserve">
+    <value>SQL Profiler</value>
+  </data>
+  <data name="TraceStopped" xml:space="preserve">
+    <value>Trace parado</value>
+  </data>
+  <data name="WorkspacePlaceholder" xml:space="preserve">
+    <value>Foundation pronta. Conectividade Firebird entra no Sprint 1.</value>
+  </data>
+</root>

@@ -1,0 +1,11 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="Color.Neutral.0">#FFFFFFFF</Color>
+    <Color x:Key="Color.Neutral.50">#FFF7F8FA</Color>
+    <Color x:Key="Color.Neutral.100">#FFE9ECF1</Color>
+    <Color x:Key="Color.Neutral.500">#FF667085</Color>
+    <Color x:Key="Color.Neutral.700">#FF344054</Color>
+    <Color x:Key="Color.Neutral.900">#FF101828</Color>
+    <Color x:Key="Color.Accent.600">#FF0F766E</Color>
+    <Color x:Key="Color.Accent.700">#FF115E59</Color>
+</ResourceDictionary>

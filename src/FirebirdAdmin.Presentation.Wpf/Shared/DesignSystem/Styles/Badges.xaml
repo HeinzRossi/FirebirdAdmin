@@ -1,0 +1,10 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="Badge.Neutral" TargetType="Border">
+        <Setter Property="CornerRadius" Value="{DynamicResource Radius.S}"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.App.Background}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+</ResourceDictionary>
