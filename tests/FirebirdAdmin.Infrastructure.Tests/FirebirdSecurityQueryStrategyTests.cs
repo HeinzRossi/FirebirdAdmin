@@ -41,6 +41,18 @@ public sealed class FirebirdSecurityQueryStrategyTests
         grant.Privilege.Name.Should().Be("MEMBER OF");
     }
 
+    [Fact]
+    public void InferUsersFromGrants_ShouldKeepCatalogUsableWhenSecUsersIsUnavailable()
+    {
+        var users = FirebirdSecurityQueryStrategy.InferUsersFromGrants(
+            [
+                new SecurityGrant(new SecurityPrincipalReference("ALICE", "User"), new SecurityObjectReference("CUSTOMERS", "Table"), SecurityPrivilege.FromCode("S"), "SYSDBA", false, SecurityGrantKind.ObjectPrivilege),
+                new SecurityGrant(new SecurityPrincipalReference("REPORTING", "Role"), new SecurityObjectReference("CUSTOMERS", "Table"), SecurityPrivilege.FromCode("S"), "SYSDBA", false, SecurityGrantKind.ObjectPrivilege)
+            ]);
+
+        users.Should().ContainSingle(user => user.Name == "ALICE" && !user.IsVisible && user.Source == "RDB$USER_PRIVILEGES");
+    }
+
     private static string FindRepoFile(params string[] parts)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
