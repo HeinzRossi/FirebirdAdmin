@@ -1,9 +1,11 @@
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Dashboard;
+using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
+using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
@@ -68,10 +70,12 @@ public sealed class ShellViewModelTests
             new FakeFirebirdConnectionService(connectionShouldFail),
             new FakeMonitoringSessionService(),
             new FakeHistoryWriter(),
+            new DiagnosticEngine([new FakeDiagnosticRule()]),
             new TransactionsWorkspaceViewModel(),
             new DashboardViewModel(new DashboardProjectionService()),
             new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
-            new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()));
+            new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
+            new AlertsCenterViewModel(new FakeAlertStore()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -219,6 +223,76 @@ public sealed class ShellViewModelTests
         public Task<ExportResult> ExportAsync(ExportRequest request, CancellationToken cancellationToken)
         {
             return Task.FromResult(new ExportResult("fake.csv", 0));
+        }
+    }
+
+    private sealed class FakeDiagnosticRule : IDiagnosticRule
+    {
+        public string RuleId => "TEST_RULE";
+
+        public IReadOnlyList<DiagnosticResult> Evaluate(DiagnosticContext context, DiagnosticRuleOptions options)
+        {
+            if (context.MonitoringSnapshot is null)
+            {
+                return [];
+            }
+
+            return
+            [
+                new DiagnosticResult(
+                    RuleId,
+                    DiagnosticSeverity.Low,
+                    "Teste",
+                    new DiagnosticTarget("Session", context.MonitoringSnapshot.SessionId.ToString("N")),
+                    DateTimeOffset.UtcNow,
+                    context.ConnectionProfileId,
+                    context.MonitoringSnapshot.SessionId,
+                    [new DiagnosticEvidence("Count", 1)])
+            ];
+        }
+    }
+
+    private sealed class FakeAlertStore : IAlertStore
+    {
+        private readonly List<Alert> alerts = [];
+        private readonly AlertCorrelator correlator = new();
+
+        public Task<Alert> UpsertAsync(DiagnosticResult result, CancellationToken cancellationToken)
+        {
+            var key = AlertCorrelator.BuildCorrelationKey(result);
+            var existing = alerts.SingleOrDefault(alert => alert.CorrelationKey == key);
+            var alert = correlator.Correlate(result, existing);
+            if (existing is not null)
+            {
+                alerts.Remove(existing);
+            }
+
+            alerts.Add(alert);
+            return Task.FromResult(alert);
+        }
+
+        public Task<IReadOnlyList<Alert>> ListAsync(AlertStatus? status, DiagnosticSeverity? severity, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<Alert>>(alerts.Where(alert =>
+                (status is null || alert.Status == status) &&
+                (severity is null || alert.Severity == severity)).ToArray());
+        }
+
+        public Task<Alert?> GetByCorrelationKeyAsync(string correlationKey, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(alerts.SingleOrDefault(alert => alert.CorrelationKey == correlationKey));
+        }
+
+        public Task SetStatusAsync(Guid id, AlertStatus status, string? note, CancellationToken cancellationToken)
+        {
+            var alert = alerts.SingleOrDefault(item => item.Id == id);
+            if (alert is not null)
+            {
+                alerts.Remove(alert);
+                alerts.Add(alert with { Status = status, AcknowledgementNote = note });
+            }
+
+            return Task.CompletedTask;
         }
     }
 }

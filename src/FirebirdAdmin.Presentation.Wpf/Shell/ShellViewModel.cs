@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
+using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
+using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
@@ -18,6 +20,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IFirebirdConnectionService firebirdConnectionService;
     private readonly IMonitoringSessionService monitoringSessionService;
     private readonly IHistoryWriter historyWriter;
+    private readonly IDiagnosticEngine diagnosticEngine;
     private CancellationTokenSource? monitoringReadCts;
 
     [ObservableProperty]
@@ -59,20 +62,25 @@ public sealed partial class ShellViewModel : ObservableObject
         IFirebirdConnectionService firebirdConnectionService,
         IMonitoringSessionService monitoringSessionService,
         IHistoryWriter historyWriter,
+        IDiagnosticEngine diagnosticEngine,
         TransactionsWorkspaceViewModel transactionsWorkspace,
         DashboardViewModel dashboard,
         ProfilerWorkspaceViewModel profilerWorkspace,
-        HistoryWorkspaceViewModel historyWorkspace)
+        HistoryWorkspaceViewModel historyWorkspace,
+        AlertsCenterViewModel alertsCenter)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
         this.firebirdConnectionService = firebirdConnectionService;
         this.monitoringSessionService = monitoringSessionService;
         this.historyWriter = historyWriter;
+        this.diagnosticEngine = diagnosticEngine;
         TransactionsWorkspace = transactionsWorkspace;
         Dashboard = dashboard;
         ProfilerWorkspace = profilerWorkspace;
         HistoryWorkspace = historyWorkspace;
+        AlertsCenter = alertsCenter;
+        ProfilerWorkspace.ProfilerEventReceived += ProfilerWorkspace_OnProfilerEventReceived;
 
         NavigationItems =
         [
@@ -121,6 +129,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public TransactionsWorkspaceViewModel TransactionsWorkspace { get; }
     public ProfilerWorkspaceViewModel ProfilerWorkspace { get; }
     public HistoryWorkspaceViewModel HistoryWorkspace { get; }
+    public AlertsCenterViewModel AlertsCenter { get; }
 
     public string ConnectionContext => ActiveConnection is null
         ? AppStrings.ConnectionContextEmpty
@@ -261,6 +270,7 @@ public sealed partial class ShellViewModel : ObservableObject
             {
                 Dashboard.ApplySnapshot(snapshot);
                 TransactionsWorkspace.ApplySnapshot(snapshot);
+                _ = RunDiagnosticsAsync(snapshot);
                 _ = PersistMonitoringSnapshotAsync(snapshot);
             }
         }
@@ -299,5 +309,22 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             OperationMessage = $"Falha ao persistir histórico MON$: {ex.Message}";
         }
+    }
+
+    private async void ProfilerWorkspace_OnProfilerEventReceived(object? sender, Application.Profiler.ProfilerEvent profilerEvent)
+    {
+        await RunDiagnosticsAsync(profilerEvent);
+    }
+
+    private async Task RunDiagnosticsAsync(MonitoringSnapshot snapshot)
+    {
+        var results = diagnosticEngine.Evaluate(snapshot, ActiveConnection?.ProfileId);
+        await AlertsCenter.AcceptDiagnosticResultsAsync(results);
+    }
+
+    private async Task RunDiagnosticsAsync(Application.Profiler.ProfilerEvent profilerEvent)
+    {
+        var results = diagnosticEngine.Evaluate(profilerEvent, ActiveConnection?.ProfileId);
+        await AlertsCenter.AcceptDiagnosticResultsAsync(results);
     }
 }

@@ -31,6 +31,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
     private ProfilerEventRowViewModel? selectedEvent;
 
     public ObservableCollection<ProfilerEventRowViewModel> Events { get; } = [];
+    public event EventHandler<ProfilerEvent>? ProfilerEventReceived;
 
     public string StateText => State.ToString();
     public int EventCount => Events.Count;
@@ -163,6 +164,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
             await foreach (var profilerEvent in profilerSessionService.ReadAllAsync(cancellationToken))
             {
                 buffer.Add(profilerEvent);
+                ProfilerEventReceived?.Invoke(this, profilerEvent);
                 _ = PersistProfilerEventAsync(profilerEvent);
 
                 if (State is not ProfilerState.PausedView)

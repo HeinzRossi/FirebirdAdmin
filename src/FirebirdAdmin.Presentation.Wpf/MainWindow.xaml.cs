@@ -93,4 +93,24 @@ public partial class MainWindow
     {
         await viewModel.HistoryWorkspace.ExportJsonAsync();
     }
+
+    private async void RefreshAlertsButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.LoadAsync();
+    }
+
+    private async void AcknowledgeAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.AcknowledgeAsync();
+    }
+
+    private async void ResolveAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.ResolveAsync();
+    }
+
+    private async void ReopenAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.ReopenAsync();
+    }
 }
