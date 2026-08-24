@@ -2,11 +2,13 @@ using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Dashboard;
 using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.History;
+using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
+using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
@@ -75,7 +77,8 @@ public sealed class ShellViewModelTests
             new DashboardViewModel(new DashboardProjectionService()),
             new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
             new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
-            new AlertsCenterViewModel(new FakeAlertStore()));
+            new AlertsCenterViewModel(new FakeAlertStore()),
+            new MetadataExplorerViewModel(new FakeMetadataCatalogService()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -293,6 +296,40 @@ public sealed class ShellViewModelTests
             }
 
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeMetadataCatalogService : IMetadataCatalogService
+    {
+        private MetadataCatalog? catalog;
+
+        public Task<MetadataCatalog> LoadCatalogAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
+        {
+            catalog = new MetadataCatalog(
+                [new MetadataObjectSummary(new MetadataObjectReference(MetadataObjectKind.Table, "CUSTOMERS"), "CUSTOMERS")],
+                DateTimeOffset.UtcNow,
+                MetadataCacheState.Fresh);
+            return Task.FromResult(catalog);
+        }
+
+        public Task<MetadataObjectDetails> LoadDetailsAsync(
+            ConnectionContext connection,
+            CredentialSecret? password,
+            MetadataObjectReference reference,
+            CancellationToken cancellationToken)
+        {
+            var summary = new MetadataObjectSummary(reference, reference.Name);
+            return Task.FromResult(new MetadataObjectDetails(summary, [], [], [], [], [], [], null, null));
+        }
+
+        public MetadataCatalog? GetCachedCatalog() => catalog;
+
+        public void MarkCacheStale()
+        {
+            if (catalog is not null)
+            {
+                catalog = catalog with { State = MetadataCacheState.Stale };
+            }
         }
     }
 }

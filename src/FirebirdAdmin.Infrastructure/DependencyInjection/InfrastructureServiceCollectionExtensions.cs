@@ -1,11 +1,13 @@
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.History;
+using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Infrastructure.Connections;
 using FirebirdAdmin.Infrastructure.Diagnostics;
 using FirebirdAdmin.Infrastructure.History;
+using FirebirdAdmin.Infrastructure.Metadata;
 using FirebirdAdmin.Infrastructure.Monitoring;
 using FirebirdAdmin.Infrastructure.Persistence;
 using FirebirdAdmin.Infrastructure.Profiler;
@@ -36,6 +38,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IFirebirdCapabilitiesResolver, FirebirdCapabilitiesResolver>();
         services.AddSingleton<IFirebirdToolsetDiscoveryService, FirebirdToolsetDiscoveryService>();
         services.AddScoped<IMonitoringQueryStrategy, FirebirdMonitoringQueryStrategy>();
+        services.AddScoped<IMetadataQueryStrategy, FirebirdMetadataQueryStrategy>();
         services.AddSingleton<SqliteConnectionFactory>();
         services.AddScoped<IHistoryWriter, DapperHistoryWriter>();
         services.AddScoped<IHistoryQueryService, DapperHistoryQueryService>();

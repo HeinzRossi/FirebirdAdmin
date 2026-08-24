@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using FirebirdAdmin.Application.Dashboard;
 using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.Diagnostics.Rules;
+using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 
@@ -21,6 +22,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IDiagnosticRule, StaleSnapshotRule>();
         services.AddSingleton<IDiagnosticEngine, DiagnosticEngine>();
         services.AddSingleton<IAlertCorrelator, AlertCorrelator>();
+        services.AddSingleton<IMetadataCache, MetadataCache>();
+        services.AddSingleton<IMetadataDdlBuilder, MetadataDdlBuilder>();
+        services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
         return services;
     }
 }
