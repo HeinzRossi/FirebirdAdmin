@@ -4,18 +4,22 @@
 
 | Recurso | 2.5 | 3.x | 4.x | 5.x |
 |---|---|---|---|---|
-| Conexão | A validar | A validar | A validar | A validar |
-| MON$ Attachments | A validar | A validar | A validar | A validar |
-| MON$ Transactions | A validar | A validar | A validar | A validar |
-| MON$ Statements | A validar | A validar | A validar | A validar |
-| Trace | A validar | A validar | A validar | A validar |
-| Packages | N/A esperado | A validar | A validar | A validar |
-| Standalone Functions | A validar | A validar | A validar | A validar |
-| Identity Columns | A validar | A validar | A validar | A validar |
-| Backup | A validar | A validar | A validar | A validar |
-| Restore | A validar | A validar | A validar | A validar |
-| Validation | A validar | A validar | A validar | A validar |
-| Sweep | A validar | A validar | A validar | A validar |
+| Conexão | Integração opcional | Integração opcional | Integração opcional | Integração opcional |
+| Capabilities | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| MON$ Attachments | Integração opcional | Integração opcional | Integração opcional | Integração opcional |
+| MON$ Transactions | Integração opcional | Integração opcional | Integração opcional | Integração opcional |
+| MON$ Statements | Integração opcional | Integração opcional | Integração opcional | Integração opcional |
+| Trace config | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| Trace execução | A validar em ambiente real | A validar em ambiente real | A validar em ambiente real | A validar em ambiente real |
+| Metadata catalog | Integração opcional | Integração opcional | Integração opcional | Integração opcional |
+| Security read-only | Integração opcional | Integração opcional | Integração opcional | Integração opcional |
+| Packages | N/A esperado | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| Standalone Functions | N/A esperado | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| Identity Columns | N/A esperado | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| Backup preflight | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| Restore preflight | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| Validation preflight | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
+| Sweep preflight | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy | Coberto por teste unitário/strategy |
 
 ## Estados permitidos
 
@@ -24,5 +28,18 @@
 - `Não suportado`
 - `N/A`
 - `A validar`
+- `Integração opcional`
+- `Coberto por teste unitário/strategy`
+- `A validar em ambiente real`
 
 Nunca converter uma suposição de versão em suporte confirmado sem teste/documentação.
+
+## Execução local opcional
+
+```powershell
+.\scripts\firebird-matrix-up.ps1
+.\scripts\firebird-matrix-test.ps1
+.\scripts\firebird-matrix-down.ps1
+```
+
+O teste padrão da solution não exige Docker nem servidores Firebird reais. Os testes de integração só executam contra versões que tiverem env vars `FIREBIRDADMIN_FB25_*`, `FIREBIRDADMIN_FB30_*`, `FIREBIRDADMIN_FB40_*` ou `FIREBIRDADMIN_FB50_*` configuradas.
