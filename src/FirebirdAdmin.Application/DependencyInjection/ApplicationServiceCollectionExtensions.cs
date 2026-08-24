@@ -6,6 +6,7 @@ using FirebirdAdmin.Application.Maintenance;
 using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
+using FirebirdAdmin.Application.Security;
 
 namespace FirebirdAdmin.Application.DependencyInjection;
 
@@ -28,6 +29,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IMetadataCache, MetadataCache>();
         services.AddSingleton<IMetadataDdlBuilder, MetadataDdlBuilder>();
         services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
+        services.AddSingleton<ISecurityCache, SecurityCache>();
+        services.AddScoped<ISecurityCatalogService, SecurityCatalogService>();
         return services;
     }
 }
