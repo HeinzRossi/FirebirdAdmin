@@ -6,6 +6,7 @@ using FirebirdAdmin.Application.Maintenance;
 using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
+using FirebirdAdmin.Application.Security;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
@@ -13,6 +14,7 @@ using FirebirdAdmin.Presentation.Wpf.Maintenance;
 using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
+using FirebirdAdmin.Presentation.Wpf.Security;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Shell;
 using FluentAssertions;
@@ -36,6 +38,75 @@ public sealed class ShellViewModelTests
         viewModel.PollingStatus.Should().Be(AppStrings.PollingStopped);
         viewModel.Port.Should().Be(3050);
         viewModel.UserName.Should().Be("SYSDBA");
+        viewModel.SelectedWorkspace.Should().Be(ShellWorkspace.Dashboard);
+        viewModel.WorkspaceTitle.Should().Be(AppStrings.Dashboard);
+        viewModel.NavigationItems.Should().HaveCount(9);
+    }
+
+    [Fact]
+    public void SelectWorkspace_ShouldUpdateSelectedItemAndTitle()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.SelectWorkspace(ShellWorkspace.SqlProfiler);
+
+        viewModel.SelectedWorkspace.Should().Be(ShellWorkspace.SqlProfiler);
+        viewModel.SelectedNavigationItem.Should().NotBeNull();
+        viewModel.SelectedNavigationItem!.Title.Should().Be(AppStrings.SqlProfiler);
+        viewModel.WorkspaceTitle.Should().Be(AppStrings.SqlProfiler);
+    }
+
+    [Theory]
+    [InlineData("1", ShellWorkspace.Dashboard)]
+    [InlineData("2", ShellWorkspace.Monitoring)]
+    [InlineData("3", ShellWorkspace.SqlProfiler)]
+    [InlineData("4", ShellWorkspace.Diagnostics)]
+    [InlineData("5", ShellWorkspace.Metadata)]
+    [InlineData("6", ShellWorkspace.Security)]
+    [InlineData("7", ShellWorkspace.Maintenance)]
+    [InlineData("8", ShellWorkspace.History)]
+    [InlineData("9", ShellWorkspace.Settings)]
+    public void SelectWorkspaceByShortcut_ShouldMapCtrlNumberOrder(string shortcut, ShellWorkspace expected)
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.SelectWorkspaceByShortcut(shortcut);
+
+        viewModel.SelectedWorkspace.Should().Be(expected);
+    }
+
+    [Fact]
+    public async Task RefreshSelectedWorkspaceAsync_ShouldRefreshCurrentWorkspaceOnly()
+    {
+        var metadataService = new FakeMetadataCatalogService();
+        var securityService = new FakeSecurityCatalogService();
+        var viewModel = CreateViewModel(metadataService: metadataService, securityService: securityService);
+
+        await viewModel.ConnectAsync("masterkey");
+        viewModel.SelectWorkspace(ShellWorkspace.Metadata);
+        await viewModel.RefreshSelectedWorkspaceAsync();
+
+        metadataService.LoadCount.Should().BeGreaterThan(0);
+
+        viewModel.SelectWorkspace(ShellWorkspace.Security);
+        await viewModel.RefreshSelectedWorkspaceAsync();
+
+        securityService.LoadCount.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task SwitchingWorkspace_ShouldPreserveProfilerState()
+    {
+        var viewModel = CreateViewModel();
+        await viewModel.ConnectAsync("masterkey");
+        await viewModel.StartProfilerAsync("masterkey");
+        await WaitUntilAsync(() => viewModel.ProfilerWorkspace.EventCount == 1);
+
+        viewModel.SelectWorkspace(ShellWorkspace.History);
+        viewModel.SelectWorkspace(ShellWorkspace.SqlProfiler);
+
+        viewModel.ProfilerWorkspace.EventCount.Should().Be(1);
+        viewModel.ProfilerWorkspace.SelectedEvent.Should().NotBeNull();
     }
 
     [Fact]
@@ -66,7 +137,10 @@ public sealed class ShellViewModelTests
         viewModel.HasActiveConnection.Should().BeFalse();
     }
 
-    private static ShellViewModel CreateViewModel(bool connectionShouldFail = false)
+    private static ShellViewModel CreateViewModel(
+        bool connectionShouldFail = false,
+        FakeMetadataCatalogService? metadataService = null,
+        FakeSecurityCatalogService? securityService = null)
     {
         return new ShellViewModel(
             new FakeConnectionProfileService(),
@@ -80,8 +154,9 @@ public sealed class ShellViewModelTests
             new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
             new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
             new AlertsCenterViewModel(new FakeAlertStore()),
-            new MetadataExplorerViewModel(new FakeMetadataCatalogService()),
-            new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()));
+            new MetadataExplorerViewModel(metadataService ?? new FakeMetadataCatalogService()),
+            new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()),
+            new SecurityWorkspaceViewModel(securityService ?? new FakeSecurityCatalogService()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -305,9 +380,11 @@ public sealed class ShellViewModelTests
     private sealed class FakeMetadataCatalogService : IMetadataCatalogService
     {
         private MetadataCatalog? catalog;
+        public int LoadCount { get; private set; }
 
         public Task<MetadataCatalog> LoadCatalogAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
         {
+            LoadCount++;
             catalog = new MetadataCatalog(
                 [new MetadataObjectSummary(new MetadataObjectReference(MetadataObjectKind.Table, "CUSTOMERS"), "CUSTOMERS")],
                 DateTimeOffset.UtcNow,
@@ -361,5 +438,33 @@ public sealed class ShellViewModelTests
         public Task SaveOperationAsync(MaintenanceOperation operation, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task SaveLogAsync(MaintenanceLogLine logLine, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<IReadOnlyList<MaintenanceOperation>> ListRecentAsync(int take, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<MaintenanceOperation>>([]);
+    }
+
+    private sealed class FakeSecurityCatalogService : ISecurityCatalogService
+    {
+        private SecurityCatalog? catalog;
+        public int LoadCount { get; private set; }
+
+        public Task<SecurityCatalog> LoadCatalogAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
+        {
+            LoadCount++;
+            catalog = new SecurityCatalog(
+                [new SecurityUser("SYSDBA", "SEC$USERS", true)],
+                [new SecurityRole("RDB$ADMIN", "SYSDBA")],
+                [new SecurityGrant(new SecurityPrincipalReference("SYSDBA", "User"), new SecurityObjectReference("RDB$ADMIN", "Role"), SecurityPrivilege.FromCode("M"), "SYSDBA", false, SecurityGrantKind.RoleMembership)],
+                DateTimeOffset.UtcNow,
+                SecurityCacheState.Fresh);
+            return Task.FromResult(catalog);
+        }
+
+        public SecurityCatalog? GetCachedCatalog() => catalog;
+
+        public void MarkCacheStale()
+        {
+            if (catalog is not null)
+            {
+                catalog = catalog with { State = SecurityCacheState.Stale };
+            }
+        }
     }
 }

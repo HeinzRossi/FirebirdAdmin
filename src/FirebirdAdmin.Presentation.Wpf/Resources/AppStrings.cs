@@ -34,6 +34,7 @@ public static class AppStrings
     public static string Role => GetString(nameof(Role));
     public static string SaveProfile => GetString(nameof(SaveProfile));
     public static string Settings => GetString(nameof(Settings));
+    public static string Security => GetString(nameof(Security));
     public static string SqlProfiler => GetString(nameof(SqlProfiler));
     public static string TestConnection => GetString(nameof(TestConnection));
     public static string TraceStopped => GetString(nameof(TraceStopped));

@@ -19,6 +19,8 @@ public sealed class FirebirdCapabilitiesResolverTests
 
         capabilities.SupportsTrace.Should().Be(trace);
         capabilities.SupportsPackages.Should().Be(packages);
+        capabilities.SupportsStandaloneFunctions.Should().Be(packages);
+        capabilities.SupportsIdentityColumns.Should().Be(packages);
         capabilities.SupportsSqlSecurity.Should().Be(sqlSecurity);
     }
 

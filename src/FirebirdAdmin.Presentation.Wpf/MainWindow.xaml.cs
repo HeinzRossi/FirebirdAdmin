@@ -1,11 +1,16 @@
 using FirebirdAdmin.Presentation.Wpf.Shell;
 using ScottPlot;
+using ScottPlot.WPF;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace FirebirdAdmin.Presentation.Wpf;
 
 public partial class MainWindow
 {
     private readonly ShellViewModel viewModel;
+    private WpfPlot? activityPlot;
+    private PasswordBox? passwordInput;
 
     public MainWindow(ShellViewModel viewModel)
     {
@@ -23,40 +28,104 @@ public partial class MainWindow
 
     private void UpdateActivityPlot()
     {
-        if (ActivityPlot is null)
+        if (activityPlot is null)
         {
             return;
         }
 
-        ActivityPlot.Plot.Clear();
+        activityPlot.Plot.Clear();
         var values = viewModel.Dashboard.GetActivityValues();
         if (values.Length > 0)
         {
-            ActivityPlot.Plot.Add.Signal(values);
+            activityPlot.Plot.Add.Signal(values);
         }
 
-        ActivityPlot.Plot.Axes.AutoScale();
-        ActivityPlot.Refresh();
+        activityPlot.Plot.Axes.AutoScale();
+        activityPlot.Refresh();
+    }
+
+    private string CurrentPassword => passwordInput?.Password ?? string.Empty;
+
+    private async void Window_OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control &&
+            e.Key is >= Key.D1 and <= Key.D9)
+        {
+            viewModel.SelectWorkspaceByShortcutCommand.Execute(((int)e.Key - (int)Key.D0).ToString());
+            e.Handled = true;
+            return;
+        }
+
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control && e.Key == Key.Enter)
+        {
+            if (viewModel.SelectedWorkspace == ShellWorkspace.Settings)
+            {
+                await viewModel.ConnectAsync(CurrentPassword);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (e.Key == Key.F5)
+        {
+            await viewModel.RefreshSelectedWorkspaceAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            viewModel.CancelCurrentWorkspaceAction();
+            e.Handled = true;
+        }
+    }
+
+    private void ActivityPlot_OnLoaded(object sender, System.Windows.RoutedEventArgs e)
+    {
+        activityPlot = (WpfPlot)sender;
+        UpdateActivityPlot();
+    }
+
+    private void ActivityPlot_OnUnloaded(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (ReferenceEquals(activityPlot, sender))
+        {
+            activityPlot = null;
+        }
+    }
+
+    private void PasswordInput_OnLoaded(object sender, System.Windows.RoutedEventArgs e)
+    {
+        passwordInput = (PasswordBox)sender;
+    }
+
+    private void PasswordInput_OnUnloaded(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (ReferenceEquals(passwordInput, sender))
+        {
+            passwordInput = null;
+        }
     }
 
     private async void SaveProfileButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.SaveProfileAsync(PasswordInput.Password);
+        await viewModel.SaveProfileAsync(CurrentPassword);
     }
 
     private async void TestConnectionButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.TestConnectionAsync(PasswordInput.Password);
+        await viewModel.TestConnectionAsync(CurrentPassword);
     }
 
     private async void ConnectButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.ConnectAsync(PasswordInput.Password);
+        await viewModel.ConnectAsync(CurrentPassword);
     }
 
     private async void StartProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.StartProfilerAsync(PasswordInput.Password);
+        await viewModel.StartProfilerAsync(CurrentPassword);
     }
 
     private async void StopProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
@@ -157,5 +226,20 @@ public partial class MainWindow
     private async void RefreshMaintenanceHistoryButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         await viewModel.MaintenanceWorkspace.LoadHistoryAsync();
+    }
+
+    private async void LoadSecurityButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.SecurityWorkspace.LoadAsync();
+    }
+
+    private async void RefreshSecurityButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.SecurityWorkspace.RefreshAsync();
+    }
+
+    private void MarkSecurityStaleButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        viewModel.SecurityWorkspace.MarkStale();
     }
 }
