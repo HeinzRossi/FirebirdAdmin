@@ -1,9 +1,16 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
+using FirebirdAdmin.Application.Diagnostics;
+using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
+using FirebirdAdmin.Presentation.Wpf.Diagnostics;
+using FirebirdAdmin.Presentation.Wpf.History;
+using FirebirdAdmin.Presentation.Wpf.Maintenance;
+using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
+using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.Shell;
@@ -14,6 +21,8 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly ICredentialStore credentialStore;
     private readonly IFirebirdConnectionService firebirdConnectionService;
     private readonly IMonitoringSessionService monitoringSessionService;
+    private readonly IHistoryWriter historyWriter;
+    private readonly IDiagnosticEngine diagnosticEngine;
     private CancellationTokenSource? monitoringReadCts;
 
     [ObservableProperty]
@@ -54,15 +63,30 @@ public sealed partial class ShellViewModel : ObservableObject
         ICredentialStore credentialStore,
         IFirebirdConnectionService firebirdConnectionService,
         IMonitoringSessionService monitoringSessionService,
+        IHistoryWriter historyWriter,
+        IDiagnosticEngine diagnosticEngine,
         TransactionsWorkspaceViewModel transactionsWorkspace,
-        DashboardViewModel dashboard)
+        DashboardViewModel dashboard,
+        ProfilerWorkspaceViewModel profilerWorkspace,
+        HistoryWorkspaceViewModel historyWorkspace,
+        AlertsCenterViewModel alertsCenter,
+        MetadataExplorerViewModel metadataExplorer,
+        MaintenanceWorkspaceViewModel maintenanceWorkspace)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
         this.firebirdConnectionService = firebirdConnectionService;
         this.monitoringSessionService = monitoringSessionService;
+        this.historyWriter = historyWriter;
+        this.diagnosticEngine = diagnosticEngine;
         TransactionsWorkspace = transactionsWorkspace;
         Dashboard = dashboard;
+        ProfilerWorkspace = profilerWorkspace;
+        HistoryWorkspace = historyWorkspace;
+        AlertsCenter = alertsCenter;
+        MetadataExplorer = metadataExplorer;
+        MaintenanceWorkspace = maintenanceWorkspace;
+        ProfilerWorkspace.ProfilerEventReceived += ProfilerWorkspace_OnProfilerEventReceived;
 
         NavigationItems =
         [
@@ -91,16 +115,29 @@ public sealed partial class ShellViewModel : ObservableObject
     public string SaveProfileLabel => AppStrings.SaveProfile;
     public string TestConnectionLabel => AppStrings.TestConnection;
     public string ConnectLabel => AppStrings.Connect;
-    public string TraceStatus => AppStrings.TraceStopped;
+    public string TraceStatus => ProfilerWorkspace.State switch
+    {
+        Application.Profiler.ProfilerState.Running => "Trace em execução",
+        Application.Profiler.ProfilerState.Starting => "Trace iniciando",
+        Application.Profiler.ProfilerState.PausedView => "Trace capturando, visual pausada",
+        Application.Profiler.ProfilerState.Stopping => "Trace encerrando",
+        Application.Profiler.ProfilerState.Failed => "Trace com falha",
+        _ => AppStrings.TraceStopped
+    };
     public string PollingStatus => AppStrings.PollingStopped;
     public string WorkspaceTitle => AppStrings.Dashboard;
     public bool IsNavigationExpanded => true;
     public bool HasActiveConnection => ActiveConnection is not null;
-    public bool IsTraceRunning => false;
+    public bool IsTraceRunning => ProfilerWorkspace.State is Application.Profiler.ProfilerState.Running;
     public bool IsPollingRunning => false;
     public ObservableCollection<ShellNavigationItem> NavigationItems { get; }
     public DashboardViewModel Dashboard { get; }
     public TransactionsWorkspaceViewModel TransactionsWorkspace { get; }
+    public ProfilerWorkspaceViewModel ProfilerWorkspace { get; }
+    public HistoryWorkspaceViewModel HistoryWorkspace { get; }
+    public AlertsCenterViewModel AlertsCenter { get; }
+    public MetadataExplorerViewModel MetadataExplorer { get; }
+    public MaintenanceWorkspaceViewModel MaintenanceWorkspace { get; }
 
     public string ConnectionContext => ActiveConnection is null
         ? AppStrings.ConnectionContextEmpty
@@ -171,6 +208,11 @@ public sealed partial class ShellViewModel : ObservableObject
             if (setActiveConnection)
             {
                 ActiveConnection = context;
+                ProfilerWorkspace.SetReady();
+                MetadataExplorer.SetConnection(context, providedSecret ?? savedSecret);
+                MaintenanceWorkspace.SetConnection(context, providedSecret ?? savedSecret);
+                _ = MetadataExplorer.LoadCatalogAsync();
+                _ = MaintenanceWorkspace.LoadHistoryAsync();
                 await StartMonitoringAsync(profile, providedSecret ?? savedSecret, context, cancellationToken);
             }
 
@@ -182,6 +224,40 @@ public sealed partial class ShellViewModel : ObservableObject
             ConnectionState = ShellConnectionState.ConnectionFailed;
             OperationMessage = ex.Message;
         }
+    }
+
+    public async Task StartProfilerAsync(string password, CancellationToken cancellationToken = default)
+    {
+        if (ActiveConnection is null)
+        {
+            ProfilerWorkspace.SetFailed("Conecte a um banco antes de iniciar o SQL Profiler.");
+            return;
+        }
+
+        using var providedSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
+        using var savedSecret = providedSecret is null ? await credentialStore.TryLoadAsync(ActiveConnection.ProfileId, cancellationToken) : null;
+        await ProfilerWorkspace.StartAsync(ActiveConnection, providedSecret ?? savedSecret, cancellationToken);
+        OnPropertyChanged(nameof(TraceStatus));
+        OnPropertyChanged(nameof(IsTraceRunning));
+    }
+
+    public async Task StopProfilerAsync(CancellationToken cancellationToken = default)
+    {
+        await ProfilerWorkspace.StopAsync(cancellationToken);
+        OnPropertyChanged(nameof(TraceStatus));
+        OnPropertyChanged(nameof(IsTraceRunning));
+    }
+
+    public void PauseProfilerView()
+    {
+        ProfilerWorkspace.PauseView();
+        OnPropertyChanged(nameof(TraceStatus));
+    }
+
+    public void ResumeProfilerFollow()
+    {
+        ProfilerWorkspace.ResumeFollow();
+        OnPropertyChanged(nameof(TraceStatus));
     }
 
     private async Task StartMonitoringAsync(
@@ -206,6 +282,8 @@ public sealed partial class ShellViewModel : ObservableObject
             {
                 Dashboard.ApplySnapshot(snapshot);
                 TransactionsWorkspace.ApplySnapshot(snapshot);
+                _ = RunDiagnosticsAsync(snapshot);
+                _ = PersistMonitoringSnapshotAsync(snapshot);
             }
         }
         catch (OperationCanceledException)
@@ -231,5 +309,34 @@ public sealed partial class ShellViewModel : ObservableObject
             Role,
             RememberPassword,
             secret);
+    }
+
+    private async Task PersistMonitoringSnapshotAsync(MonitoringSnapshot snapshot)
+    {
+        try
+        {
+            await historyWriter.WriteMonitoringSnapshotsAsync(ActiveConnection?.ProfileId, [snapshot], CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            OperationMessage = $"Falha ao persistir histórico MON$: {ex.Message}";
+        }
+    }
+
+    private async void ProfilerWorkspace_OnProfilerEventReceived(object? sender, Application.Profiler.ProfilerEvent profilerEvent)
+    {
+        await RunDiagnosticsAsync(profilerEvent);
+    }
+
+    private async Task RunDiagnosticsAsync(MonitoringSnapshot snapshot)
+    {
+        var results = diagnosticEngine.Evaluate(snapshot, ActiveConnection?.ProfileId);
+        await AlertsCenter.AcceptDiagnosticResultsAsync(results);
+    }
+
+    private async Task RunDiagnosticsAsync(Application.Profiler.ProfilerEvent profilerEvent)
+    {
+        var results = diagnosticEngine.Evaluate(profilerEvent, ActiveConnection?.ProfileId);
+        await AlertsCenter.AcceptDiagnosticResultsAsync(results);
     }
 }

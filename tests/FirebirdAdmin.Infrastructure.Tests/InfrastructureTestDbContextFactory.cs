@@ -1,5 +1,6 @@
 using FirebirdAdmin.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FirebirdAdmin.Infrastructure.Tests;
 
@@ -11,10 +12,11 @@ internal sealed class InfrastructureTestDbContextFactory : IDbContextFactory<App
     {
         options = new DbContextOptionsBuilder<AppDbContext>()
             .UseSqlite($"Data Source={databasePath};Pooling=False")
+            .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
 
         using var dbContext = new AppDbContext(options);
-        dbContext.Database.EnsureCreated();
+        dbContext.Database.Migrate();
     }
 
     public AppDbContext CreateDbContext()
