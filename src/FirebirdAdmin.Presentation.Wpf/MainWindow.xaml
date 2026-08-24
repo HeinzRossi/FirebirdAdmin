@@ -26,16 +26,16 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="240"/>
                     </Grid.RowDefinitions>
-                    <DockPanel Grid.Row="0">
-                        <StackPanel>
-                            <TextBlock Text="{Binding DataContext.DashboardOperationalTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                            <TextBlock Text="{Binding HealthMessage}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <Grid Grid.Row="0">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding DataContext.DashboardOperationalTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                            <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding HealthText}" TextTrimming="CharacterEllipsis"/></Border>
+                            <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding LastUpdatedText, StringFormat={x:Static res:AppStrings.LastUpdatedFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                         </StackPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding HealthText}"/></Border>
-                            <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding LastUpdatedText, StringFormat={x:Static res:AppStrings.LastUpdatedFormat}}"/></Border>
-                        </StackPanel>
-                    </DockPanel>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding HealthMessage}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    </Grid>
                     <ItemsControl Grid.Row="1" ItemsSource="{Binding Metrics}" Margin="0,14,0,14">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -60,16 +60,16 @@
         <DataTemplate x:Key="MonitoringWorkspaceTemplate">
             <Grid DataContext="{Binding TransactionsWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="140"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel>
-                        <TextBlock Text="{Binding DataContext.TransactionsTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                        <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding DataContext.TransactionsTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding TransactionCount, StringFormat={x:Static res:AppStrings.TransactionCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
+                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveTransactionCount, StringFormat={x:Static res:AppStrings.ActiveCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding TransactionCount, StringFormat={x:Static res:AppStrings.TransactionCountFormat}}"/></Border>
-                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveTransactionCount, StringFormat={x:Static res:AppStrings.ActiveCountFormat}}"/></Border>
-                    </StackPanel>
-                </DockPanel>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
                 <Grid Grid.Row="1" Margin="0,16,0,10">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding DataContext.TransactionsFilterLabel, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/>
@@ -101,16 +101,15 @@
         <DataTemplate x:Key="ProfilerWorkspaceTemplate">
             <Grid DataContext="{Binding ProfilerWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel>
-                        <TextBlock Text="{x:Static res:AppStrings.SqlProfiler}" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                        <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.SqlProfiler}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding BufferedCount, StringFormat={x:Static res:AppStrings.BufferCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding StateText}"/></Border>
-                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding BufferedCount, StringFormat={x:Static res:AppStrings.BufferCountFormat}}"/></Border>
-                    </StackPanel>
-                </DockPanel>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
                 <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
                     <Button Content="{Binding DataContext.StartLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="StartProfilerButton_OnClick" Style="{DynamicResource Button.Primary}" MinWidth="82" AutomationProperties.Name="Iniciar SQL Profiler" TabIndex="20"/>
                     <Button Content="{Binding DataContext.PauseViewLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="PauseProfilerButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="138" AutomationProperties.Name="Pausar visualização do Profiler" TabIndex="21"/>
@@ -144,7 +143,10 @@
         <DataTemplate x:Key="HistoryWorkspaceTemplate">
             <Grid DataContext="{Binding HistoryWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="105"/></Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="{x:Static res:AppStrings.History}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="{x:Static res:AppStrings.History}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                </Grid>
                 <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
                     <ComboBox Text="{Binding DataKind, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Tipo de histórico" TabIndex="30"/>
                     <TextBox Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" AutomationProperties.Name="Filtro de usuário do histórico" TabIndex="31"/>
@@ -171,16 +173,16 @@
         <DataTemplate x:Key="AlertsWorkspaceTemplate">
             <Grid DataContext="{Binding AlertsCenter}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="120"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel>
-                        <TextBlock Text="{x:Static res:AppStrings.Diagnostics}" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                        <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Diagnostics}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveCount, StringFormat={x:Static res:AppStrings.ActiveCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
+                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding CriticalCount, StringFormat={x:Static res:AppStrings.CriticalCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveCount, StringFormat={x:Static res:AppStrings.ActiveCountFormat}}"/></Border>
-                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding CriticalCount, StringFormat={x:Static res:AppStrings.CriticalCountFormat}}"/></Border>
-                    </StackPanel>
-                </DockPanel>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
                 <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
                     <ComboBox Text="{Binding StatusFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de status de alerta" TabIndex="40"/>
                     <ComboBox Text="{Binding SeverityFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de severidade de alerta" TabIndex="41"/>
@@ -214,10 +216,13 @@
         <DataTemplate x:Key="MetadataWorkspaceTemplate">
             <Grid DataContext="{Binding MetadataExplorer}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel><TextBlock Text="{x:Static res:AppStrings.Metadata}" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
-                    <Border DockPanel.Dock="Right" Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding StateText}"/></Border>
-                </DockPanel>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Metadata}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <Border Grid.Row="0" Grid.Column="1" Style="{DynamicResource Badge.Neutral}" VerticalAlignment="Top"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis"/></Border>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
                 <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
                     <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Busca de metadata" TabIndex="50"/>
                     <Button Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadMetadataCatalogButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Carregar catálogo de metadata" TabIndex="51"/>
@@ -251,10 +256,13 @@
         <DataTemplate x:Key="SecurityWorkspaceTemplate">
             <Grid DataContext="{Binding SecurityWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="100"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel><TextBlock Text="{x:Static res:AppStrings.Security}" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding StateText}"/></Border><Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding SummaryText}"/></Border></StackPanel>
-                </DockPanel>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Security}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <Border Grid.Row="0" Grid.Column="1" Style="{DynamicResource Badge.Neutral}" VerticalAlignment="Top"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis"/></Border>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
                 <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
                     <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Filtro de segurança" TabIndex="60"/>
                     <Button Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadSecurityButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Carregar segurança" TabIndex="61"/>
@@ -280,10 +288,13 @@
         <DataTemplate x:Key="MaintenanceWorkspaceTemplate">
             <Grid DataContext="{Binding MaintenanceWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="110"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel><TextBlock Text="{x:Static res:AppStrings.Maintenance}" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding Stage}"/></Border></StackPanel>
-                </DockPanel>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Maintenance}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <Border Grid.Row="0" Grid.Column="1" Style="{DynamicResource Badge.Neutral}" VerticalAlignment="Top"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding Stage}" TextTrimming="CharacterEllipsis"/></Border>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
                 <Border Grid.Row="1" Style="{DynamicResource Panel.Detail}" Margin="0,12,0,8" Visibility="{Binding IsProgressVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Grid>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -335,7 +346,11 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <Grid Style="{DynamicResource Workspace.Root}" MaxWidth="760" HorizontalAlignment="Left">
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0"><TextBlock Text="{Binding ConnectionProfilesTitle}" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding WorkspacePlaceholder}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,16" TextWrapping="Wrap"/></StackPanel>
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="{Binding ConnectionProfilesTitle}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                        <TextBlock Grid.Row="1" Text="{Binding WorkspacePlaceholder}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                    </Grid>
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
