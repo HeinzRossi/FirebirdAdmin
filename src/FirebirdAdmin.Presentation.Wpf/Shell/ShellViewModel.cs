@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.History;
@@ -12,6 +13,7 @@ using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
+using FirebirdAdmin.Presentation.Wpf.Security;
 
 namespace FirebirdAdmin.Presentation.Wpf.Shell;
 
@@ -58,6 +60,12 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private ConnectionContext? activeConnection;
 
+    [ObservableProperty]
+    private ShellNavigationItem? selectedNavigationItem;
+
+    [ObservableProperty]
+    private ShellWorkspace selectedWorkspace = ShellWorkspace.Dashboard;
+
     public ShellViewModel(
         IConnectionProfileService connectionProfileService,
         ICredentialStore credentialStore,
@@ -71,7 +79,8 @@ public sealed partial class ShellViewModel : ObservableObject
         HistoryWorkspaceViewModel historyWorkspace,
         AlertsCenterViewModel alertsCenter,
         MetadataExplorerViewModel metadataExplorer,
-        MaintenanceWorkspaceViewModel maintenanceWorkspace)
+        MaintenanceWorkspaceViewModel maintenanceWorkspace,
+        SecurityWorkspaceViewModel securityWorkspace)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
@@ -86,19 +95,22 @@ public sealed partial class ShellViewModel : ObservableObject
         AlertsCenter = alertsCenter;
         MetadataExplorer = metadataExplorer;
         MaintenanceWorkspace = maintenanceWorkspace;
+        SecurityWorkspace = securityWorkspace;
         ProfilerWorkspace.ProfilerEventReceived += ProfilerWorkspace_OnProfilerEventReceived;
 
         NavigationItems =
         [
-            new(AppStrings.Dashboard),
-            new(AppStrings.Monitoring),
-            new(AppStrings.SqlProfiler),
-            new(AppStrings.Diagnostics),
-            new(AppStrings.Metadata),
-            new(AppStrings.Maintenance),
-            new(AppStrings.History),
-            new(AppStrings.Settings)
+            new(ShellWorkspace.Dashboard, AppStrings.Dashboard, "1", $"_1 {AppStrings.Dashboard}"),
+            new(ShellWorkspace.Monitoring, AppStrings.Monitoring, "2", $"_2 {AppStrings.Monitoring}"),
+            new(ShellWorkspace.SqlProfiler, AppStrings.SqlProfiler, "3", $"_3 {AppStrings.SqlProfiler}"),
+            new(ShellWorkspace.Diagnostics, AppStrings.Diagnostics, "4", $"_4 {AppStrings.Diagnostics}"),
+            new(ShellWorkspace.Metadata, AppStrings.Metadata, "5", $"_5 {AppStrings.Metadata}"),
+            new(ShellWorkspace.Security, AppStrings.Security, "6", $"_6 {AppStrings.Security}"),
+            new(ShellWorkspace.Maintenance, AppStrings.Maintenance, "7", $"_7 {AppStrings.Maintenance}"),
+            new(ShellWorkspace.History, AppStrings.History, "8", $"_8 {AppStrings.History}"),
+            new(ShellWorkspace.Settings, AppStrings.Settings, "9", $"_9 {AppStrings.Settings}")
         ];
+        SelectedNavigationItem = NavigationItems[0];
     }
 
     public string ApplicationName => AppStrings.AppName;
@@ -125,7 +137,7 @@ public sealed partial class ShellViewModel : ObservableObject
         _ => AppStrings.TraceStopped
     };
     public string PollingStatus => AppStrings.PollingStopped;
-    public string WorkspaceTitle => AppStrings.Dashboard;
+    public string WorkspaceTitle => SelectedNavigationItem?.Title ?? AppStrings.Dashboard;
     public bool IsNavigationExpanded => true;
     public bool HasActiveConnection => ActiveConnection is not null;
     public bool IsTraceRunning => ProfilerWorkspace.State is Application.Profiler.ProfilerState.Running;
@@ -138,6 +150,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public AlertsCenterViewModel AlertsCenter { get; }
     public MetadataExplorerViewModel MetadataExplorer { get; }
     public MaintenanceWorkspaceViewModel MaintenanceWorkspace { get; }
+    public SecurityWorkspaceViewModel SecurityWorkspace { get; }
 
     public string ConnectionContext => ActiveConnection is null
         ? AppStrings.ConnectionContextEmpty
@@ -155,6 +168,31 @@ public sealed partial class ShellViewModel : ObservableObject
     public string WorkspacePlaceholder => ActiveConnection is null
         ? OperationMessage
         : $"{ActiveConnection.Capabilities.Explanation} Toolsets: {ActiveConnection.Toolset.Candidates.Count(candidate => candidate.IsAvailable)} encontrados.";
+
+    partial void OnSelectedNavigationItemChanged(ShellNavigationItem? value)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        if (SelectedWorkspace != value.Workspace)
+        {
+            SelectedWorkspace = value.Workspace;
+        }
+
+        OnPropertyChanged(nameof(WorkspaceTitle));
+    }
+
+    partial void OnSelectedWorkspaceChanged(ShellWorkspace value)
+    {
+        if (SelectedNavigationItem?.Workspace != value)
+        {
+            SelectedNavigationItem = NavigationItems.First(item => item.Workspace == value);
+        }
+
+        OnPropertyChanged(nameof(WorkspaceTitle));
+    }
 
     partial void OnActiveConnectionChanged(ConnectionContext? value)
     {
@@ -190,6 +228,55 @@ public sealed partial class ShellViewModel : ObservableObject
         await ConnectCoreAsync(password, setActiveConnection: true, cancellationToken);
     }
 
+    [RelayCommand]
+    public void SelectWorkspace(ShellWorkspace workspace)
+    {
+        SelectedWorkspace = workspace;
+    }
+
+    [RelayCommand]
+    public void SelectWorkspaceByShortcut(string? shortcut)
+    {
+        if (!int.TryParse(shortcut, out var index) || index < 1 || index > NavigationItems.Count)
+        {
+            return;
+        }
+
+        SelectedNavigationItem = NavigationItems[index - 1];
+    }
+
+    [RelayCommand]
+    public async Task RefreshSelectedWorkspaceAsync(CancellationToken cancellationToken = default)
+    {
+        switch (SelectedWorkspace)
+        {
+            case ShellWorkspace.History:
+                await HistoryWorkspace.SearchAsync(cancellationToken);
+                break;
+            case ShellWorkspace.Diagnostics:
+                await AlertsCenter.LoadAsync(cancellationToken);
+                break;
+            case ShellWorkspace.Metadata:
+                await MetadataExplorer.RefreshCatalogAsync(cancellationToken);
+                break;
+            case ShellWorkspace.Security:
+                await SecurityWorkspace.RefreshAsync(cancellationToken);
+                break;
+            case ShellWorkspace.Maintenance:
+                await MaintenanceWorkspace.LoadHistoryAsync(cancellationToken);
+                break;
+        }
+    }
+
+    [RelayCommand]
+    public void CancelCurrentWorkspaceAction()
+    {
+        if (SelectedWorkspace == ShellWorkspace.Maintenance)
+        {
+            MaintenanceWorkspace.Cancel();
+        }
+    }
+
     private async Task ConnectCoreAsync(string password, bool setActiveConnection, CancellationToken cancellationToken)
     {
         ConnectionState = ShellConnectionState.Connecting;
@@ -211,8 +298,10 @@ public sealed partial class ShellViewModel : ObservableObject
                 ProfilerWorkspace.SetReady();
                 MetadataExplorer.SetConnection(context, providedSecret ?? savedSecret);
                 MaintenanceWorkspace.SetConnection(context, providedSecret ?? savedSecret);
+                SecurityWorkspace.SetConnection(context, providedSecret ?? savedSecret);
                 _ = MetadataExplorer.LoadCatalogAsync();
                 _ = MaintenanceWorkspace.LoadHistoryAsync();
+                _ = SecurityWorkspace.LoadAsync();
                 await StartMonitoringAsync(profile, providedSecret ?? savedSecret, context, cancellationToken);
             }
 

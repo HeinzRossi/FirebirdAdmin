@@ -1,0 +1,21 @@
+name: Release Package
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Publish release package
+        shell: pwsh
+        run: ./scripts/release-publish.ps1
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FirebirdAdmin-win-x64
+          path: artifacts/releases/FirebirdAdmin-v*-win-x64.zip
