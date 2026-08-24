@@ -77,6 +77,13 @@ public partial class MainWindow
 
         if (e.Key == Key.Escape)
         {
+            if (viewModel.IsAboutOpen)
+            {
+                viewModel.CloseAbout();
+                e.Handled = true;
+                return;
+            }
+
             viewModel.CancelCurrentWorkspaceAction();
             e.Handled = true;
         }

@@ -23,6 +23,9 @@ public sealed class ResourceTests
         AppStrings.LastUpdatedFormat.Should().Contain("{0}");
         AppStrings.ExportCsv.Should().Be("CSV");
         AppStrings.Exit.Should().Be("Sair");
+        AppStrings.About.Should().Be("Sobre");
+        AppStrings.AboutTitle.Should().Contain("Firebird Admin");
+        AppStrings.AboutVersionFormat.Should().Contain("{0}");
         AppStrings.ThemeLight.Should().Be("Claro");
         AppStrings.ThemeDark.Should().Be("Escuro");
         AppStrings.ThemeToggleFormat.Should().Contain("{0}");

@@ -11,4 +11,10 @@
     <PackageReference Include="WPF-UI" />
     <PackageReference Include="ScottPlot.WPF" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\Branding\FirebirdAdmin.ico" />
+    <Resource Include="Assets\Branding\FirebirdAdmin_Icon_1024.png" />
+    <Resource Include="Assets\Branding\FirebirdAdmin_Logo.png" />
+  </ItemGroup>
 </Project>

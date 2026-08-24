@@ -7,6 +7,7 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>false</PublishSingleFile>
     <PublishReadyToRun>false</PublishReadyToRun>
+    <ApplicationIcon>..\FirebirdAdmin.Presentation.Wpf\Assets\Branding\FirebirdAdmin.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,5 +20,9 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <SplashScreen Include="..\FirebirdAdmin.Presentation.Wpf\Assets\Branding\FirebirdAdmin_Logo.png" Link="FirebirdAdmin_Logo.png" />
   </ItemGroup>
 </Project>

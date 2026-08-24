@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -72,6 +73,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     private AppTheme currentTheme;
+
+    [ObservableProperty]
+    private bool isAboutOpen;
 
     public ShellViewModel(
         IConnectionProfileService connectionProfileService,
@@ -149,6 +153,11 @@ public sealed partial class ShellViewModel : ObservableObject
     public string ValidateLabel => AppStrings.Validate;
     public string ExecuteLabel => AppStrings.Execute;
     public string ExitLabel => AppStrings.Exit;
+    public string AboutLabel => AppStrings.About;
+    public string AboutTitle => AppStrings.AboutTitle;
+    public string AboutDescription => AppStrings.AboutDescription;
+    public string AboutCloseLabel => AppStrings.AboutClose;
+    public string AboutVersionText => string.Format(AppStrings.AboutVersionFormat, GetInformationalVersion());
     public string CancelLabel => AppStrings.Cancel;
     public string UpdateHistoryLabel => AppStrings.UpdateHistory;
     public string AlertsInstruction => AppStrings.AlertsInstruction;
@@ -327,6 +336,27 @@ public sealed partial class ShellViewModel : ObservableObject
     public void ToggleTheme()
     {
         CurrentTheme = themeService.Toggle();
+    }
+
+    [RelayCommand]
+    public void ShowAbout()
+    {
+        IsAboutOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseAbout()
+    {
+        IsAboutOpen = false;
+    }
+
+    private static string GetInformationalVersion()
+    {
+        return typeof(ShellViewModel).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion
+            ?? typeof(ShellViewModel).Assembly.GetName().Version?.ToString()
+            ?? "1.0.0";
     }
 
     private async Task ConnectCoreAsync(string password, bool setActiveConnection, CancellationToken cancellationToken)

@@ -45,8 +45,22 @@ public sealed class ShellViewModelTests
         viewModel.NavigationItems.Should().OnlyContain(item => !string.IsNullOrWhiteSpace(item.IconGlyph));
         viewModel.NavigationItems.Should().OnlyContain(item => !item.AccessText.Contains(item.Shortcut, StringComparison.Ordinal));
         viewModel.ExitLabel.Should().Be(AppStrings.Exit);
+        viewModel.AboutLabel.Should().Be(AppStrings.About);
+        viewModel.IsAboutOpen.Should().BeFalse();
         viewModel.CurrentTheme.Should().Be(AppTheme.Light);
         viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeLight);
+    }
+
+    [Fact]
+    public void AboutCommands_ShouldToggleAboutState()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.ShowAbout();
+        viewModel.IsAboutOpen.Should().BeTrue();
+
+        viewModel.CloseAbout();
+        viewModel.IsAboutOpen.Should().BeFalse();
     }
 
     [Fact]

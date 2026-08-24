@@ -5,6 +5,7 @@
         xmlns:res="clr-namespace:FirebirdAdmin.Presentation.Wpf.Resources"
         xmlns:shell="clr-namespace:FirebirdAdmin.Presentation.Wpf.Shell"
         Title="{Binding ApplicationName}"
+        Icon="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin.ico"
         Width="1180"
         Height="760"
         WindowState="Maximized"
@@ -15,6 +16,8 @@
         FontFamily="{DynamicResource FontFamily.Base}"
         KeyDown="Window_OnKeyDown">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
         <DataTemplate x:Key="DashboardWorkspaceTemplate">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <Grid DataContext="{Binding Dashboard}" Style="{DynamicResource Workspace.Root}">
@@ -399,8 +402,20 @@
                 <Grid.RowDefinitions><RowDefinition Height="{DynamicResource Size.ConnectionContext.Height}"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.Raised}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,0,1" Padding="16,10">
                     <DockPanel LastChildFill="True">
-                        <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding ApplicationName}" Style="{DynamicResource Text.AppTitle}"/><TextBlock Text="{Binding WorkspaceTitle}" Style="{DynamicResource Text.StatusBar}" Margin="0,2,0,0"/></StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Image Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin_Icon_1024.png"
+                                   Width="34"
+                                   Height="34"
+                                   Margin="0,0,10,0"
+                                   Stretch="Uniform"
+                                   AutomationProperties.Name="Firebird Admin"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ApplicationName}" Style="{DynamicResource Text.AppTitle}"/>
+                                <TextBlock Text="{Binding WorkspaceTitle}" Style="{DynamicResource Text.StatusBar}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="{Binding AboutLabel}" Command="{Binding ShowAboutCommand}" Style="{DynamicResource Button.Toolbar}" MinWidth="76" Margin="0,0,8,0" AutomationProperties.Name="Abrir informações sobre o Firebird Admin"/>
                             <Button Content="{Binding ThemeToggleLabel}" Command="{Binding ToggleThemeCommand}" Style="{DynamicResource Button.Toolbar}" MinWidth="104" Margin="0,0,8,0" AutomationProperties.Name="Alternar tema"/>
                             <Border Style="{DynamicResource Badge.Neutral}" MaxWidth="620"><TextBlock Text="{Binding ConnectionContext}" Style="{DynamicResource Text.Badge}" TextTrimming="CharacterEllipsis"/></Border>
                         </StackPanel>
@@ -436,5 +451,28 @@
                 <TextBlock DockPanel.Dock="Right" Text="{Binding KeyboardHelp}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
+        <Grid Grid.RowSpan="2"
+              Panel.ZIndex="20"
+              Background="{DynamicResource Brush.Surface.Workspace}"
+              Visibility="{Binding IsAboutOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Style="{DynamicResource Panel.Detail}"
+                    Width="460"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="24"
+                    AutomationProperties.Name="{Binding AboutTitle}">
+                <StackPanel>
+                    <Image Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin_Logo.png"
+                           Height="104"
+                           Stretch="Uniform"
+                           Margin="0,0,0,20"
+                           AutomationProperties.Name="Logo Firebird Admin"/>
+                    <TextBlock Text="{Binding AboutTitle}" Style="{DynamicResource Text.EmptyStateTitle}" TextAlignment="Center"/>
+                    <TextBlock Text="{Binding AboutVersionText}" Style="{DynamicResource Text.StatusBar}" TextAlignment="Center" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding AboutDescription}" Style="{DynamicResource Text.EmptyStateBody}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,16,0,20"/>
+                    <Button Content="{Binding AboutCloseLabel}" Command="{Binding CloseAboutCommand}" Style="{DynamicResource Button.Primary}" MinWidth="96" HorizontalAlignment="Center" IsCancel="True" AutomationProperties.Name="Fechar sobre o Firebird Admin"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

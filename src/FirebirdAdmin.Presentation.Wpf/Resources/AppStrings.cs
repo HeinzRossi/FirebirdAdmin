@@ -58,6 +58,11 @@ public static class AppStrings
     public static string Validate => GetString(nameof(Validate));
     public static string Execute => GetString(nameof(Execute));
     public static string Exit => GetString(nameof(Exit));
+    public static string About => GetString(nameof(About));
+    public static string AboutTitle => GetString(nameof(AboutTitle));
+    public static string AboutDescription => GetString(nameof(AboutDescription));
+    public static string AboutVersionFormat => GetString(nameof(AboutVersionFormat));
+    public static string AboutClose => GetString(nameof(AboutClose));
     public static string Cancel => GetString(nameof(Cancel));
     public static string UpdateHistory => GetString(nameof(UpdateHistory));
     public static string AlertsInstruction => GetString(nameof(AlertsInstruction));

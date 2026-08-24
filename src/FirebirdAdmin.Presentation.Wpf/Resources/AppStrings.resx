@@ -405,4 +405,19 @@
   <data name="Exit" xml:space="preserve">
     <value>Sair</value>
   </data>
+  <data name="About" xml:space="preserve">
+    <value>Sobre</value>
+  </data>
+  <data name="AboutTitle" xml:space="preserve">
+    <value>Sobre o Firebird Admin</value>
+  </data>
+  <data name="AboutDescription" xml:space="preserve">
+    <value>Ferramenta Windows para administração segura, monitoramento, profiling SQL, diagnóstico por evidências, metadata read-only, histórico local e manutenção controlada.</value>
+  </data>
+  <data name="AboutVersionFormat" xml:space="preserve">
+    <value>Versão {0}</value>
+  </data>
+  <data name="AboutClose" xml:space="preserve">
+    <value>Fechar</value>
+  </data>
 </root>
