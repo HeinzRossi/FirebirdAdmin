@@ -201,6 +201,7 @@ public sealed class FbTraceManagerProfilerSessionService(
             return;
         }
 
+        var technicalLine = NormalizeTechnicalLine(line);
         var sequence = Interlocked.Increment(ref nextSequence);
         await channel.Writer.WriteAsync(
             new ProfilerEvent(
@@ -214,8 +215,15 @@ public sealed class FbTraceManagerProfilerSessionService(
                 null,
                 new ProfilerMetrics(),
                 null,
-                MaskTechnicalLine(line)),
+                MaskTechnicalLine(technicalLine)),
             cancellationToken);
+    }
+
+    private static string NormalizeTechnicalLine(string line)
+    {
+        return line.Contains("error while parsing trace configuration", StringComparison.OrdinalIgnoreCase)
+            ? $"Configuração Trace incompatível com esta versão do Firebird: {line}"
+            : line;
     }
 
     private static void WritePasswordFetchFile(string path, byte[] passwordBytes)

@@ -12,15 +12,15 @@ public sealed class TraceConfigurationBuilder : ITraceConfigurationBuilder
         var thresholdText = ((long)threshold).ToString(CultureInfo.InvariantCulture);
 
         return serverVersion.Major <= 2
-            ? BuildLegacy(options.Connection.Database, thresholdText)
+            ? BuildLegacy(thresholdText)
             : BuildModern(options.Connection.Database, thresholdText);
     }
 
-    private static string BuildLegacy(string database, string threshold)
+    private static string BuildLegacy(string threshold)
     {
         return string.Join(
             Environment.NewLine,
-            $"<database {database}>",
+            "<database>",
             "  enabled true",
             "  log_statement_start true",
             "  log_statement_finish true",
