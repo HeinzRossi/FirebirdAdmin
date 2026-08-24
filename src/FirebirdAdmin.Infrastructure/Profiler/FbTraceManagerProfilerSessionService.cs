@@ -11,6 +11,8 @@ public sealed class FbTraceManagerProfilerSessionService(
     ITraceEventParser traceEventParser,
     ITraceProcessRunner traceProcessRunner) : IProfilerSessionService
 {
+    private static readonly TimeSpan StartupProbeTimeout = TimeSpan.FromSeconds(1);
+
     private readonly Channel<ProfilerEvent> channel = Channel.CreateUnbounded<ProfilerEvent>(
         new UnboundedChannelOptions { SingleReader = false, SingleWriter = true });
 
@@ -48,13 +50,7 @@ public sealed class FbTraceManagerProfilerSessionService(
         }
 
         sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        traceConfigPath = Path.Combine(Path.GetTempPath(), $"firebird-admin-trace-{Guid.NewGuid():N}.conf");
         passwordFetchPath = null;
-
-        File.WriteAllText(
-            traceConfigPath,
-            traceConfigurationBuilder.Build(options, options.Connection.ServerVersion),
-            Encoding.UTF8);
 
         var passwordBytes = password?.CopyBytes() ?? [];
         try
@@ -70,28 +66,8 @@ public sealed class FbTraceManagerProfilerSessionService(
             Array.Clear(passwordBytes);
         }
 
-        var arguments = new List<string>
-        {
-            "-se",
-            $"{options.Connection.Host}:service_mgr",
-            "-start",
-            "-name",
-            options.SessionName,
-            "-config",
-            traceConfigPath,
-            "-user",
-            options.Connection.UserName
-        };
-
-        if (passwordFetchPath is not null)
-        {
-            arguments.Add("-fetch");
-            arguments.Add(passwordFetchPath);
-        }
-
         State = ProfilerState.Running;
-        var request = new TraceProcessRequest(traceManager.Path, arguments);
-        runningTask = RunTraceAsync(request, sessionCts.Token);
+        runningTask = RunTraceAsync(options, traceManager, sessionCts.Token);
 
         return Task.FromResult(new ProfilerSession(
             Guid.NewGuid(),
@@ -132,22 +108,42 @@ public sealed class FbTraceManagerProfilerSessionService(
         return channel.Reader.ReadAllAsync(cancellationToken);
     }
 
-    private async Task RunTraceAsync(TraceProcessRequest request, CancellationToken cancellationToken)
+    private async Task RunTraceAsync(
+        ProfilerOptions options,
+        ToolsetCandidate traceManager,
+        CancellationToken cancellationToken)
     {
-        var block = new StringBuilder();
-
         try
         {
-            var exitCode = await traceProcessRunner.RunAsync(
-                request,
-                async (line, token) => await OnOutputLineAsync(line, block, token),
-                async (line, token) => await PublishTechnicalAsync(line, token),
-                cancellationToken);
+            var initialDialect = ResolveInitialDialect(options.Connection, traceManager);
+            var fallbackDialect = GetAlternateDialect(initialDialect);
+            var firstAttempt = await RunTraceAttemptAsync(options, traceManager, initialDialect, cancellationToken);
 
-            if (exitCode != 0)
+            if (firstAttempt.ParseConfigurationFailed && !cancellationToken.IsCancellationRequested)
+            {
+                var secondAttempt = await RunTraceAttemptAsync(options, traceManager, fallbackDialect, cancellationToken);
+                if (secondAttempt.ParseConfigurationFailed)
+                {
+                    State = ProfilerState.Failed;
+                    await PublishTechnicalAsync(
+                        BuildTraceConfigurationFailureMessage(options.Connection, traceManager, initialDialect, fallbackDialect, secondAttempt),
+                        CancellationToken.None);
+                    return;
+                }
+
+                if (secondAttempt.ExitCode != 0)
+                {
+                    State = ProfilerState.Failed;
+                    await PublishTechnicalAsync($"fbtracemgr finalizou com código {secondAttempt.ExitCode}.", CancellationToken.None);
+                }
+
+                return;
+            }
+
+            if (firstAttempt.ExitCode != 0)
             {
                 State = ProfilerState.Failed;
-                await PublishTechnicalAsync($"fbtracemgr finalizou com código {exitCode}.", CancellationToken.None);
+                await PublishTechnicalAsync($"fbtracemgr finalizou com código {firstAttempt.ExitCode}.", CancellationToken.None);
             }
         }
         catch (OperationCanceledException)
@@ -160,8 +156,156 @@ public sealed class FbTraceManagerProfilerSessionService(
         }
         finally
         {
-            await FlushBlockAsync(block, CancellationToken.None);
             CleanupTemporaryFiles();
+        }
+    }
+
+    private async Task<TraceAttemptResult> RunTraceAttemptAsync(
+        ProfilerOptions options,
+        ToolsetCandidate traceManager,
+        TraceConfigurationDialect dialect,
+        CancellationToken cancellationToken)
+    {
+        var attemptConfigPath = Path.Combine(Path.GetTempPath(), $"firebird-admin-trace-{Guid.NewGuid():N}.conf");
+        traceConfigPath = attemptConfigPath;
+
+        File.WriteAllText(
+            attemptConfigPath,
+            traceConfigurationBuilder.Build(options, dialect),
+            Encoding.UTF8);
+
+        var request = new TraceProcessRequest(
+            traceManager.Path,
+            BuildArguments(options, attemptConfigPath));
+
+        var block = new StringBuilder();
+        var bufferedOutput = new List<string>();
+        var bufferedErrors = new List<string>();
+        var bufferLock = new object();
+        var parseErrorDetected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var bufferingStartup = true;
+
+        using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+
+        async Task OnAttemptOutputLineAsync(string line, CancellationToken token)
+        {
+            if (IsTraceConfigurationParseError(line))
+            {
+                parseErrorDetected.TrySetResult();
+            }
+
+            if (ShouldBuffer())
+            {
+                lock (bufferLock)
+                {
+                    bufferedOutput.Add(line);
+                }
+
+                return;
+            }
+
+            await OnOutputLineAsync(line, block, token);
+        }
+
+        async Task OnAttemptErrorLineAsync(string line, CancellationToken token)
+        {
+            if (IsTraceConfigurationParseError(line))
+            {
+                parseErrorDetected.TrySetResult();
+            }
+
+            if (ShouldBuffer())
+            {
+                lock (bufferLock)
+                {
+                    bufferedErrors.Add(line);
+                }
+
+                return;
+            }
+
+            await PublishTechnicalAsync(line, token);
+        }
+
+        var runnerTask = traceProcessRunner.RunAsync(
+            request,
+            OnAttemptOutputLineAsync,
+            OnAttemptErrorLineAsync,
+            attemptCts.Token);
+
+        try
+        {
+            var startupDelay = Task.Delay(StartupProbeTimeout, cancellationToken);
+            var completed = await Task.WhenAny(runnerTask, startupDelay, parseErrorDetected.Task);
+
+            if (completed == parseErrorDetected.Task && !runnerTask.IsCompleted)
+            {
+                await attemptCts.CancelAsync();
+                await WaitForAttemptCancellationAsync(runnerTask);
+                return new TraceAttemptResult(dialect, ExitCode: 1, ParseConfigurationFailed: true, bufferedOutput, bufferedErrors);
+            }
+
+            if (completed == runnerTask)
+            {
+                var exitCode = await runnerTask;
+                var failedByParse = HasTraceConfigurationParseError(bufferedOutput) || HasTraceConfigurationParseError(bufferedErrors);
+                if (!failedByParse)
+                {
+                    await FlushBufferedLinesAsync(bufferedOutput, bufferedErrors, block, cancellationToken);
+                }
+
+                return new TraceAttemptResult(dialect, exitCode, failedByParse, bufferedOutput, bufferedErrors);
+            }
+
+            bufferingStartup = false;
+            await FlushBufferedLinesAsync(bufferedOutput, bufferedErrors, block, cancellationToken);
+            var runningExitCode = await runnerTask;
+            return new TraceAttemptResult(dialect, runningExitCode, ParseConfigurationFailed: false, bufferedOutput, bufferedErrors);
+        }
+        finally
+        {
+            await FlushBlockAsync(block, CancellationToken.None);
+            DeleteIfExists(attemptConfigPath);
+            if (string.Equals(traceConfigPath, attemptConfigPath, StringComparison.OrdinalIgnoreCase))
+            {
+                traceConfigPath = null;
+            }
+        }
+
+        bool ShouldBuffer()
+        {
+            lock (bufferLock)
+            {
+                return bufferingStartup;
+            }
+        }
+    }
+
+    private static async Task WaitForAttemptCancellationAsync(Task runnerTask)
+    {
+        try
+        {
+            await runnerTask;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private async Task FlushBufferedLinesAsync(
+        IReadOnlyList<string> outputLines,
+        IReadOnlyList<string> errorLines,
+        StringBuilder block,
+        CancellationToken cancellationToken)
+    {
+        foreach (var line in outputLines)
+        {
+            await OnOutputLineAsync(line, block, cancellationToken);
+        }
+
+        foreach (var line in errorLines)
+        {
+            await PublishTechnicalAsync(line, cancellationToken);
         }
     }
 
@@ -259,6 +403,81 @@ public sealed class FbTraceManagerProfilerSessionService(
         return masked;
     }
 
+    private IReadOnlyList<string> BuildArguments(ProfilerOptions options, string configPath)
+    {
+        var arguments = new List<string>
+        {
+            "-se",
+            $"{options.Connection.Host}:service_mgr",
+            "-start",
+            "-name",
+            options.SessionName,
+            "-config",
+            configPath,
+            "-user",
+            options.Connection.UserName
+        };
+
+        if (passwordFetchPath is not null)
+        {
+            arguments.Add("-fetch");
+            arguments.Add(passwordFetchPath);
+        }
+
+        return arguments;
+    }
+
+    private static TraceConfigurationDialect ResolveInitialDialect(
+        ConnectionContext connection,
+        ToolsetCandidate traceManager)
+    {
+        var toolVersion = FirebirdServerVersion.Parse(traceManager.Version);
+        if (toolVersion.Major > 0)
+        {
+            return toolVersion.Major <= 2
+                ? TraceConfigurationDialect.Legacy25
+                : TraceConfigurationDialect.Modern30Plus;
+        }
+
+        return connection.ServerVersion.Major <= 2
+            ? TraceConfigurationDialect.Legacy25
+            : TraceConfigurationDialect.Modern30Plus;
+    }
+
+    private static TraceConfigurationDialect GetAlternateDialect(TraceConfigurationDialect dialect)
+    {
+        return dialect is TraceConfigurationDialect.Legacy25
+            ? TraceConfigurationDialect.Modern30Plus
+            : TraceConfigurationDialect.Legacy25;
+    }
+
+    private static bool HasTraceConfigurationParseError(IEnumerable<string> lines)
+    {
+        return lines.Any(IsTraceConfigurationParseError);
+    }
+
+    private static bool IsTraceConfigurationParseError(string line)
+    {
+        return line.Contains("error while parsing trace configuration", StringComparison.OrdinalIgnoreCase)
+            || line.Contains("expected name, got", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string BuildTraceConfigurationFailureMessage(
+        ConnectionContext connection,
+        ToolsetCandidate traceManager,
+        TraceConfigurationDialect firstDialect,
+        TraceConfigurationDialect secondDialect,
+        TraceAttemptResult failedAttempt)
+    {
+        var toolVersion = string.IsNullOrWhiteSpace(traceManager.Version) ? "desconhecida" : traceManager.Version;
+        var detail = failedAttempt.ErrorLines.Concat(failedAttempt.OutputLines).FirstOrDefault(IsTraceConfigurationParseError)
+            ?? "erro de parse não detalhado";
+
+        return SecretMasker.MaskSecrets(
+            $"Configuração Trace incompatível. Servidor Firebird {connection.ServerVersion.Raw}; " +
+            $"fbtracemgr {toolVersion}; dialetos tentados: {firstDialect}, {secondDialect}. Detalhe: {detail}");
+    }
+
     private void CleanupTemporaryFiles()
     {
         DeleteIfExists(traceConfigPath);
@@ -288,4 +507,11 @@ public sealed class FbTraceManagerProfilerSessionService(
         {
         }
     }
+
+    private sealed record TraceAttemptResult(
+        TraceConfigurationDialect Dialect,
+        int ExitCode,
+        bool ParseConfigurationFailed,
+        IReadOnlyList<string> OutputLines,
+        IReadOnlyList<string> ErrorLines);
 }

@@ -33,6 +33,20 @@ public sealed class TraceConfigurationBuilderTests
     }
 
     [Fact]
+    public void Build_ShouldGenerateModernConfigForExplicitModernDialect()
+    {
+        var builder = new TraceConfigurationBuilder();
+        var options = CreateOptions("2.5.9", @"E:\DESENVOLVIMENTOGIT\RICS_BR\EXECUÇÃO\DB\RICS.GDB");
+
+        var config = builder.Build(options, TraceConfigurationDialect.Modern30Plus);
+
+        config.Should().Contain("database = RICS.GDB");
+        config.Should().Contain("{");
+        config.Should().Contain("enabled = true");
+        config.Should().NotContain("</database>");
+    }
+
+    [Fact]
     public void Build_ShouldNotPlaceWindowsPathInsideLegacyDatabaseTagForFirebird25()
     {
         var builder = new TraceConfigurationBuilder();

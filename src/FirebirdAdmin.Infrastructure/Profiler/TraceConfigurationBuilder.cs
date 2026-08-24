@@ -8,12 +8,21 @@ public sealed class TraceConfigurationBuilder : ITraceConfigurationBuilder
 {
     public string Build(ProfilerOptions options, FirebirdServerVersion serverVersion)
     {
+        return Build(
+            options,
+            serverVersion.Major <= 2
+                ? TraceConfigurationDialect.Legacy25
+                : TraceConfigurationDialect.Modern30Plus);
+    }
+
+    public string Build(ProfilerOptions options, TraceConfigurationDialect dialect)
+    {
         var threshold = options.SlowQueryThreshold?.TotalMilliseconds ?? 0;
         var thresholdText = ((long)threshold).ToString(CultureInfo.InvariantCulture);
 
-        return serverVersion.Major <= 2
+        return dialect is TraceConfigurationDialect.Legacy25
             ? BuildLegacy(GetLegacyDatabaseTarget(options.Connection.Database), thresholdText)
-            : BuildModern(options.Connection.Database, thresholdText);
+            : BuildModern(GetModernDatabaseTarget(options.Connection.Database), thresholdText);
     }
 
     private static string BuildLegacy(string databaseTarget, string threshold)
@@ -32,6 +41,16 @@ public sealed class TraceConfigurationBuilder : ITraceConfigurationBuilder
     }
 
     private static string GetLegacyDatabaseTarget(string database)
+    {
+        return GetDatabaseFileNameOrAlias(database);
+    }
+
+    private static string GetModernDatabaseTarget(string database)
+    {
+        return GetDatabaseFileNameOrAlias(database);
+    }
+
+    private static string GetDatabaseFileNameOrAlias(string database)
     {
         if (string.IsNullOrWhiteSpace(database))
         {

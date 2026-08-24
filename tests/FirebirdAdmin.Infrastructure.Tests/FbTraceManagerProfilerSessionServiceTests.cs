@@ -70,6 +70,71 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         service.State.Should().Be(ProfilerState.Failed);
     }
 
+    [Fact]
+    public async Task StartAsync_ShouldChooseModernDialect_WhenTraceManagerVersionIsModernEvenWithFirebird25Server()
+    {
+        var runner = new FakeTraceProcessRunner();
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(serverVersion: "2.5.9", traceManagerVersion: "Firebird Trace Manager version 5.0.0"), secret, CancellationToken.None);
+        var profilerEvent = await ReadOneAsync(service);
+        await service.StopAsync(CancellationToken.None);
+
+        runner.ConfigContentDuringRun.Should().Contain("database = employee.fdb");
+        runner.ConfigContentDuringRun.Should().Contain("enabled = true");
+        runner.ConfigContentDuringRun.Should().NotContain("</database>");
+        profilerEvent.Type.Should().Be(TraceEventType.StatementFinished);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldRetryWithAlternateDialect_WhenStartupReportsTraceConfigurationParseError()
+    {
+        var runner = new FakeTraceProcessRunner(parseErrorOnFirstAttempt: true);
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(serverVersion: "2.5.9"), secret, CancellationToken.None);
+        var profilerEvent = await ReadOneAsync(service);
+        await service.StopAsync(CancellationToken.None);
+
+        runner.AttemptCount.Should().Be(2);
+        runner.ConfigContents[0].Should().Contain("<database employee.fdb>");
+        runner.ConfigContents[1].Should().Contain("database = employee.fdb");
+        profilerEvent.Type.Should().Be(TraceEventType.StatementFinished);
+        profilerEvent.RawTrace.Should().NotContain("error while parsing trace configuration");
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldPublishClearTechnicalEvent_WhenBothDialectsFail()
+    {
+        var runner = new FakeTraceProcessRunner(parseErrorOnFirstAttempt: true, parseErrorOnSecondAttempt: true);
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(serverVersion: "2.5.9"), secret, CancellationToken.None);
+        var profilerEvent = await ReadOneAsync(service);
+
+        runner.AttemptCount.Should().Be(2);
+        profilerEvent.Type.Should().Be(TraceEventType.Technical);
+        profilerEvent.RawTrace.Should().Contain("Configuração Trace incompatível");
+        profilerEvent.RawTrace.Should().Contain("Legacy25");
+        profilerEvent.RawTrace.Should().Contain("Modern30Plus");
+        service.State.Should().Be(ProfilerState.Failed);
+    }
+
     private static async Task<ProfilerEvent> ReadOneAsync(IProfilerSessionService service)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
@@ -81,11 +146,14 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         throw new InvalidOperationException("Nenhum evento recebido.");
     }
 
-    private static ProfilerOptions CreateOptions()
+    private static ProfilerOptions CreateOptions(
+        string serverVersion = "5.0.0",
+        string? traceManagerVersion = null,
+        string database = "employee.fdb")
     {
         var toolset = new EffectiveToolset(
         [
-            new ToolsetCandidate(FirebirdToolKind.TraceManager, "fake-fbtracemgr.exe", null, IsAvailable: true)
+            new ToolsetCandidate(FirebirdToolKind.TraceManager, "fake-fbtracemgr.exe", traceManagerVersion, IsAvailable: true)
         ]);
 
         var context = new ConnectionContext(
@@ -93,9 +161,9 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
             "Local",
             "localhost",
             3050,
-            "employee.fdb",
+            database,
             "SYSDBA",
-            FirebirdServerVersion.Parse("5.0.0"),
+            FirebirdServerVersion.Parse(serverVersion),
             new FirebirdCapabilities(true, true, true, true, true, "ok"),
             toolset,
             DateTimeOffset.UtcNow);
@@ -103,12 +171,19 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         return new ProfilerOptions(context, "test");
     }
 
-    private sealed class FakeTraceProcessRunner(int exitCode = 0, bool emitStatement = true) : ITraceProcessRunner
+    private sealed class FakeTraceProcessRunner(
+        int exitCode = 0,
+        bool emitStatement = true,
+        bool parseErrorOnFirstAttempt = false,
+        bool parseErrorOnSecondAttempt = false) : ITraceProcessRunner
     {
         public TraceProcessRequest? Request { get; private set; }
         public string? FetchPath { get; private set; }
         public bool FetchFileExistedDuringRun { get; private set; }
         public string? FetchFileContentDuringRun { get; private set; }
+        public int AttemptCount { get; private set; }
+        public string? ConfigContentDuringRun => ConfigContents.LastOrDefault();
+        public List<string> ConfigContents { get; } = [];
 
         public async Task<int> RunAsync(
             TraceProcessRequest request,
@@ -116,12 +191,26 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
             Func<string, CancellationToken, Task> onErrorLine,
             CancellationToken cancellationToken)
         {
+            AttemptCount++;
             Request = request;
             var arguments = request.Arguments.ToArray();
+            var configIndex = Array.IndexOf(arguments, "-config");
+            if (configIndex >= 0)
+            {
+                ConfigContents.Add(await File.ReadAllTextAsync(arguments[configIndex + 1], cancellationToken));
+            }
+
             var fetchIndex = Array.IndexOf(arguments, "-fetch");
             FetchPath = fetchIndex >= 0 ? arguments[fetchIndex + 1] : null;
             FetchFileExistedDuringRun = FetchPath is not null && File.Exists(FetchPath);
             FetchFileContentDuringRun = FetchPath is null ? null : await File.ReadAllTextAsync(FetchPath, cancellationToken);
+
+            if ((AttemptCount == 1 && parseErrorOnFirstAttempt) || (AttemptCount == 2 && parseErrorOnSecondAttempt))
+            {
+                await onErrorLine("error while parsing trace configuration", cancellationToken);
+                await onErrorLine("line 7: expected name, got \"/\"", cancellationToken);
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
 
             if (emitStatement)
             {
