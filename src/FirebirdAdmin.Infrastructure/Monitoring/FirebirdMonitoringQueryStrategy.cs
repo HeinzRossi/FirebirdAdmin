@@ -6,6 +6,16 @@ namespace FirebirdAdmin.Infrastructure.Monitoring;
 
 public sealed class FirebirdMonitoringQueryStrategy : IMonitoringQueryStrategy
 {
+    public static IReadOnlyDictionary<string, IReadOnlyList<string>> GetRequiredColumns()
+    {
+        return new Dictionary<string, IReadOnlyList<string>>
+        {
+            ["MON$ATTACHMENTS"] = ["MON$ATTACHMENT_ID", "MON$USER", "MON$REMOTE_ADDRESS", "MON$REMOTE_PROCESS", "MON$TIMESTAMP", "MON$STATE"],
+            ["MON$TRANSACTIONS"] = ["MON$TRANSACTION_ID", "MON$ATTACHMENT_ID", "MON$STATE", "MON$TIMESTAMP", "MON$TOP_TRANSACTION", "MON$OLDEST_ACTIVE", "MON$ISOLATION_MODE", "MON$LOCK_TIMEOUT"],
+            ["MON$STATEMENTS"] = ["MON$STATEMENT_ID", "MON$ATTACHMENT_ID", "MON$TRANSACTION_ID", "MON$STATE", "MON$TIMESTAMP", "MON$SQL_TEXT"]
+        };
+    }
+
     public async Task<MonitoringSnapshot> CaptureAsync(
         Guid sessionId,
         ConnectionProfile profile,
