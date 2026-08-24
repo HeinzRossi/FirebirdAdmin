@@ -4,6 +4,7 @@ using ScottPlot;
 using ScottPlot.WPF;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows;
 
 namespace FirebirdAdmin.Presentation.Wpf;
 
@@ -20,6 +21,7 @@ public partial class MainWindow
         DataContext = viewModel;
         viewModel.Dashboard.ActivityChanged += Dashboard_OnActivityChanged;
         UpdateActivityPlot();
+        UpdateMaximizeRestoreGlyph();
     }
 
     private void Dashboard_OnActivityChanged(object? sender, EventArgs e)
@@ -269,5 +271,65 @@ public partial class MainWindow
     private void ExitButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         Close();
+    }
+
+    private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximizeRestore();
+            e.Handled = true;
+            return;
+        }
+
+        if (WindowState == WindowState.Normal)
+        {
+            DragMove();
+            e.Handled = true;
+        }
+    }
+
+    private void MinimizeWindowButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        SystemCommands.MinimizeWindow(this);
+    }
+
+    private void MaximizeRestoreWindowButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        ToggleMaximizeRestore();
+    }
+
+    private void CloseWindowButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void Window_OnStateChanged(object? sender, EventArgs e)
+    {
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private void ToggleMaximizeRestore()
+    {
+        if (WindowState == WindowState.Maximized)
+        {
+            SystemCommands.RestoreWindow(this);
+        }
+        else
+        {
+            SystemCommands.MaximizeWindow(this);
+        }
+
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private void UpdateMaximizeRestoreGlyph()
+    {
+        if (MaximizeRestoreGlyph is null)
+        {
+            return;
+        }
+
+        MaximizeRestoreGlyph.Text = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
     }
 }

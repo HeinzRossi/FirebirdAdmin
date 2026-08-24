@@ -4,19 +4,68 @@
         xmlns:scott="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
         xmlns:res="clr-namespace:FirebirdAdmin.Presentation.Wpf.Resources"
         xmlns:shell="clr-namespace:FirebirdAdmin.Presentation.Wpf.Shell"
+        xmlns:winshell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="{Binding ApplicationName}"
         Icon="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin.ico"
         Width="1180"
         Height="760"
         WindowState="Maximized"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         MinWidth="820"
         MinHeight="640"
         Background="{DynamicResource Brush.App.Background}"
         Foreground="{DynamicResource Brush.App.Foreground}"
         FontFamily="{DynamicResource FontFamily.Base}"
+        StateChanged="Window_OnStateChanged"
         KeyDown="Window_OnKeyDown">
+    <winshell:WindowChrome.WindowChrome>
+        <winshell:WindowChrome CaptionHeight="34"
+                               ResizeBorderThickness="6"
+                               GlassFrameThickness="0"
+                               CornerRadius="0"
+                               UseAeroCaptionButtons="False"/>
+    </winshell:WindowChrome.WindowChrome>
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <Style x:Key="Button.WindowChrome" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="MinHeight" Value="34"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.App.Foreground}"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="winshell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+        </Style>
+
+        <Style x:Key="Button.WindowClose" TargetType="Button" BasedOn="{StaticResource Button.WindowChrome}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Brush.Status.Error}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.82"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
         <DataTemplate x:Key="DashboardWorkspaceTemplate">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -382,8 +431,48 @@
     </Window.Resources>
 
     <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="{DynamicResource Size.StatusBar.Height}"/></Grid.RowDefinitions>
-        <Grid Grid.Row="0">
+        <Grid.RowDefinitions><RowDefinition Height="34"/><RowDefinition Height="*"/><RowDefinition Height="{DynamicResource Size.StatusBar.Height}"/></Grid.RowDefinitions>
+        <Border Grid.Row="0"
+                Background="{DynamicResource Brush.Surface.Raised}"
+                BorderBrush="{DynamicResource Brush.Border.Subtle}"
+                BorderThickness="0,0,0,1"
+                MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown"
+                AutomationProperties.Name="Barra de título do Firebird Admin">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Image Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin_Icon_1024.png"
+                           Width="18"
+                           Height="18"
+                           Stretch="Uniform"
+                           Margin="0,0,8,0"
+                           AutomationProperties.Name="Ícone Firebird Admin"/>
+                    <TextBlock Text="{Binding ApplicationName}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="&#xE921;"
+                            Click="MinimizeWindowButton_OnClick"
+                            Style="{DynamicResource Button.WindowChrome}"
+                            ToolTip="Minimizar"
+                            AutomationProperties.Name="Minimizar janela"/>
+                    <Button Click="MaximizeRestoreWindowButton_OnClick"
+                            Style="{DynamicResource Button.WindowChrome}"
+                            ToolTip="Maximizar ou restaurar"
+                            AutomationProperties.Name="Maximizar ou restaurar janela">
+                        <TextBlock x:Name="MaximizeRestoreGlyph" Text="&#xE923;" FontFamily="Segoe MDL2 Assets"/>
+                    </Button>
+                    <Button Content="&#xE8BB;"
+                            Click="CloseWindowButton_OnClick"
+                            Style="{DynamicResource Button.WindowClose}"
+                            ToolTip="Fechar"
+                            AutomationProperties.Name="Fechar janela"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions><ColumnDefinition Width="{DynamicResource Size.Navigation.ExpandedWidth}"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Background="{DynamicResource Brush.Surface.Navigation}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,1,0" Padding="{DynamicResource Spacing.Thickness.L}">
                 <DockPanel LastChildFill="True">
@@ -478,7 +567,7 @@
                 </Border>
             </Grid>
         </Grid>
-        <Border Grid.Row="1" Background="{DynamicResource Brush.Surface.StatusBar}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,1,0,0" Padding="{DynamicResource Spacing.StatusBar.Padding}">
+        <Border Grid.Row="2" Background="{DynamicResource Brush.Surface.StatusBar}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,1,0,0" Padding="{DynamicResource Spacing.StatusBar.Padding}">
             <DockPanel LastChildFill="False" VerticalAlignment="Center">
                 <TextBlock Text="{Binding ReadyStatus}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding TraceStatus}" Style="{DynamicResource Text.StatusBar}" Margin="24,0,0,0" TextTrimming="CharacterEllipsis"/>
@@ -486,7 +575,7 @@
                 <TextBlock DockPanel.Dock="Right" Text="{Binding KeyboardHelp}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
-        <Grid Grid.RowSpan="2"
+        <Grid Grid.RowSpan="3"
               Panel.ZIndex="20"
               Background="{DynamicResource Brush.Surface.Workspace}"
               Visibility="{Binding IsAboutOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
