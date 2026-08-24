@@ -18,6 +18,14 @@ dotnet test FirebirdAdmin.sln
 dotnet run --project src/FirebirdAdmin.Bootstrapper
 ```
 
+Smoke manual recomendado:
+
+- abrir o app com `dotnet run --project src/FirebirdAdmin.Bootstrapper --no-build`;
+- navegar com `Ctrl+1` a `Ctrl+9`;
+- usar `F5` para atualizar o workspace ativo;
+- usar `Esc` para cancelar manutencao quando uma operacao estiver em execucao;
+- validar que a tela minima nao corta botoes principais nem status bar.
+
 ## Matriz Firebird opcional
 
 Os testes padrão não exigem Docker. Para validar Firebird 2.5/3/4/5 localmente:
