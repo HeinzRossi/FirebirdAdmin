@@ -105,7 +105,7 @@ public sealed class ShellViewModelTests
     {
         var viewModel = CreateViewModel();
         await viewModel.ConnectAsync("masterkey");
-        await viewModel.StartProfilerAsync("masterkey");
+        await viewModel.StartProfilerAsync(string.Empty);
         await WaitUntilAsync(() => viewModel.ProfilerWorkspace.EventCount == 1);
 
         viewModel.SelectWorkspace(ShellWorkspace.History);
@@ -113,6 +113,36 @@ public sealed class ShellViewModelTests
 
         viewModel.ProfilerWorkspace.EventCount.Should().Be(1);
         viewModel.ProfilerWorkspace.SelectedEvent.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task StartProfilerAsync_ShouldReuseActiveConnectionPasswordWithoutPromptingAgain()
+    {
+        var profilerService = new FakeProfilerSessionService();
+        var viewModel = CreateViewModel(profilerSessionService: profilerService);
+
+        await viewModel.ConnectAsync("masterkey");
+        await viewModel.StartProfilerAsync(string.Empty);
+
+        profilerService.StartCount.Should().Be(1);
+        profilerService.LastPasswordLength.Should().Be("masterkey".Length);
+        viewModel.ProfilerWorkspace.State.Should().Be(ProfilerState.Running);
+    }
+
+    [Fact]
+    public async Task StartProfilerAsync_ShouldUseSavedPassword_WhenSessionPasswordIsUnavailable()
+    {
+        var profilerService = new FakeProfilerSessionService();
+        var credentialStore = new FakeCredentialStore("saved-secret");
+        var viewModel = CreateViewModel(
+            credentialStore: credentialStore,
+            profilerSessionService: profilerService);
+
+        await viewModel.ConnectAsync(string.Empty);
+        await viewModel.StartProfilerAsync(string.Empty);
+
+        profilerService.StartCount.Should().Be(1);
+        profilerService.LastPasswordLength.Should().Be("saved-secret".Length);
     }
 
     [Fact]
@@ -165,18 +195,20 @@ public sealed class ShellViewModelTests
         bool connectionShouldFail = false,
         FakeMetadataCatalogService? metadataService = null,
         FakeSecurityCatalogService? securityService = null,
+        ICredentialStore? credentialStore = null,
+        IProfilerSessionService? profilerSessionService = null,
         IThemeService? themeService = null)
     {
         return new ShellViewModel(
             new FakeConnectionProfileService(),
-            new FakeCredentialStore(),
+            credentialStore ?? new FakeCredentialStore(),
             new FakeFirebirdConnectionService(connectionShouldFail),
             new FakeMonitoringSessionService(),
             new FakeHistoryWriter(),
             new DiagnosticEngine([new FakeDiagnosticRule()]),
             new TransactionsWorkspaceViewModel(),
             new DashboardViewModel(new DashboardProjectionService()),
-            new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
+            new ProfilerWorkspaceViewModel(profilerSessionService ?? new FakeProfilerSessionService(), new FakeHistoryWriter()),
             new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
             new AlertsCenterViewModel(new FakeAlertStore()),
             new MetadataExplorerViewModel(metadataService ?? new FakeMetadataCatalogService()),
@@ -234,10 +266,16 @@ public sealed class ShellViewModelTests
         }
     }
 
-    private sealed class FakeCredentialStore : ICredentialStore
+    private sealed class FakeCredentialStore(string? savedPassword = null) : ICredentialStore
     {
         public Task SaveAsync(Guid profileId, CredentialSecret secret, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task<CredentialSecret?> TryLoadAsync(Guid profileId, CancellationToken cancellationToken) => Task.FromResult<CredentialSecret?>(null);
+        public Task<CredentialSecret?> TryLoadAsync(Guid profileId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(string.IsNullOrEmpty(savedPassword)
+                ? null
+                : CredentialSecret.FromPlainText(savedPassword));
+        }
+
         public Task DeleteAsync(Guid profileId, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
@@ -305,10 +343,14 @@ public sealed class ShellViewModelTests
 
     private sealed class FakeProfilerSessionService : IProfilerSessionService
     {
+        public int StartCount { get; private set; }
+        public int LastPasswordLength { get; private set; }
         public ProfilerState State { get; private set; } = ProfilerState.Disconnected;
 
         public Task<ProfilerSession> StartAsync(ProfilerOptions options, CredentialSecret? password, CancellationToken cancellationToken)
         {
+            StartCount++;
+            LastPasswordLength = password?.CopyBytes().Length ?? 0;
             State = ProfilerState.Running;
             return Task.FromResult(new ProfilerSession(Guid.NewGuid(), options.SessionName, DateTimeOffset.UtcNow, State));
         }

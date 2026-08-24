@@ -56,7 +56,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
 
         if (password is null)
         {
-            SetFailed("Informe a senha ou salve o perfil com senha lembrada para iniciar o Profiler.");
+            SetFailed("A senha da sessão não está disponível. Reconecte ou salve o perfil com senha lembrada.");
             return;
         }
 

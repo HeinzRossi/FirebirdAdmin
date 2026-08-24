@@ -29,6 +29,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IDiagnosticEngine diagnosticEngine;
     private readonly IThemeService themeService;
     private CancellationTokenSource? monitoringReadCts;
+    private byte[]? activeSessionCredentialBytes;
 
     [ObservableProperty]
     private string profileName = "Local";
@@ -350,6 +351,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
             if (setActiveConnection)
             {
+                StoreActiveSessionCredential(credentialBytes);
                 ActiveConnection = context;
                 ProfilerWorkspace.SetReady();
                 using var metadataSecret = CreateSecretCopy(credentialBytes);
@@ -391,8 +393,9 @@ public sealed partial class ShellViewModel : ObservableObject
         }
 
         using var providedSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-        using var savedSecret = providedSecret is null ? await credentialStore.TryLoadAsync(ActiveConnection.ProfileId, cancellationToken) : null;
-        await ProfilerWorkspace.StartAsync(ActiveConnection, providedSecret ?? savedSecret, cancellationToken);
+        using var sessionSecret = providedSecret is null ? CreateSecretCopy(activeSessionCredentialBytes) : null;
+        using var savedSecret = providedSecret is null && sessionSecret is null ? await credentialStore.TryLoadAsync(ActiveConnection.ProfileId, cancellationToken) : null;
+        await ProfilerWorkspace.StartAsync(ActiveConnection, providedSecret ?? sessionSecret ?? savedSecret, cancellationToken);
         OnPropertyChanged(nameof(TraceStatus));
         OnPropertyChanged(nameof(IsTraceRunning));
     }
@@ -470,6 +473,21 @@ public sealed partial class ShellViewModel : ObservableObject
     private static CredentialSecret? CreateSecretCopy(byte[]? bytes)
     {
         return bytes is null ? null : CredentialSecret.FromBytes(bytes);
+    }
+
+    private void StoreActiveSessionCredential(byte[]? bytes)
+    {
+        ClearActiveSessionCredential();
+        activeSessionCredentialBytes = bytes is null ? null : bytes.ToArray();
+    }
+
+    private void ClearActiveSessionCredential()
+    {
+        if (activeSessionCredentialBytes is not null)
+        {
+            Array.Clear(activeSessionCredentialBytes);
+            activeSessionCredentialBytes = null;
+        }
     }
 
     private async Task PersistMonitoringSnapshotAsync(MonitoringSnapshot snapshot)

@@ -63,7 +63,7 @@ public sealed class ProfilerWorkspaceViewModelTests
         await viewModel.StartAsync(CreateConnection(), null, CancellationToken.None);
 
         viewModel.State.Should().Be(ProfilerState.Failed);
-        viewModel.Message.Should().Contain("Informe a senha");
+        viewModel.Message.Should().Contain("senha da sessão");
         service.State.Should().Be(ProfilerState.Disconnected);
     }
 
