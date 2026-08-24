@@ -40,6 +40,68 @@ public sealed class AppDbContextModelSnapshot : ModelSnapshot
             b.HasKey("Id");
         });
 
+        modelBuilder.Entity("FirebirdAdmin.Infrastructure.Persistence.Entities.AlertEventEntity", b =>
+        {
+            b.Property<Guid>("Id").ValueGeneratedNever();
+            b.Property<string>("AcknowledgementNote");
+            b.Property<string>("CorrelationKey").IsRequired();
+            b.Property<string>("EvidenceJson").IsRequired();
+            b.Property<DateTimeOffset>("FirstSeen");
+            b.Property<DateTimeOffset>("LastSeen");
+            b.Property<string>("Message").IsRequired();
+            b.Property<int>("Occurrences");
+            b.Property<string>("RuleId").IsRequired();
+            b.Property<string>("Severity").IsRequired();
+            b.Property<string>("Status").IsRequired();
+            b.Property<string>("TargetDisplayName");
+            b.Property<string>("TargetId").IsRequired();
+            b.Property<string>("TargetType").IsRequired();
+            b.HasKey("Id");
+            b.HasIndex("CorrelationKey").IsUnique();
+            b.HasIndex("LastSeen");
+            b.HasIndex("Severity");
+            b.HasIndex("Status");
+        });
+
+        modelBuilder.Entity("FirebirdAdmin.Infrastructure.Persistence.Entities.AlertNotificationEntity", b =>
+        {
+            b.Property<long>("Id").ValueGeneratedOnAdd();
+            b.Property<Guid>("AlertId");
+            b.Property<string>("Channel").IsRequired();
+            b.Property<string>("Message").IsRequired();
+            b.Property<DateTimeOffset>("SentAt");
+            b.HasKey("Id");
+            b.HasIndex("AlertId");
+        });
+
+        modelBuilder.Entity("FirebirdAdmin.Infrastructure.Persistence.Entities.MaintenanceOperationEntity", b =>
+        {
+            b.Property<Guid>("Id").ValueGeneratedNever();
+            b.Property<Guid?>("ConnectionProfileId");
+            b.Property<int>("ExitCode");
+            b.Property<DateTimeOffset?>("FinishedAt");
+            b.Property<string>("Message").IsRequired();
+            b.Property<string>("Source").IsRequired();
+            b.Property<DateTimeOffset>("StartedAt");
+            b.Property<string>("Status").IsRequired();
+            b.Property<string>("Target");
+            b.Property<string>("Type").IsRequired();
+            b.HasKey("Id");
+            b.HasIndex("StartedAt");
+            b.HasIndex("Status");
+        });
+
+        modelBuilder.Entity("FirebirdAdmin.Infrastructure.Persistence.Entities.MaintenanceOperationLogEntity", b =>
+        {
+            b.Property<long>("Id").ValueGeneratedOnAdd();
+            b.Property<Guid>("OperationId");
+            b.Property<string>("Stream").IsRequired();
+            b.Property<string>("Text").IsRequired();
+            b.Property<DateTimeOffset>("Timestamp");
+            b.HasKey("Id");
+            b.HasIndex("OperationId");
+        });
+
         modelBuilder.Entity("FirebirdAdmin.Infrastructure.Persistence.Entities.MonitoringSessionEntity", b =>
         {
             b.Property<Guid>("Id").ValueGeneratedNever();
