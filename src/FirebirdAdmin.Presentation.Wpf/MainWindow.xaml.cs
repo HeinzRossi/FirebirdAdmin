@@ -78,4 +78,19 @@ public partial class MainWindow
     {
         viewModel.ProfilerWorkspace.Clear();
     }
+
+    private async void SearchHistoryButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.HistoryWorkspace.SearchAsync();
+    }
+
+    private async void ExportHistoryCsvButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.HistoryWorkspace.ExportCsvAsync();
+    }
+
+    private async void ExportHistoryJsonButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.HistoryWorkspace.ExportJsonAsync();
+    }
 }

@@ -1,8 +1,10 @@
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Dashboard;
+using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
+using FirebirdAdmin.Presentation.Wpf.History;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
@@ -65,9 +67,11 @@ public sealed class ShellViewModelTests
             new FakeCredentialStore(),
             new FakeFirebirdConnectionService(connectionShouldFail),
             new FakeMonitoringSessionService(),
+            new FakeHistoryWriter(),
             new TransactionsWorkspaceViewModel(),
             new DashboardViewModel(new DashboardProjectionService()),
-            new ProfilerWorkspaceViewModel(new FakeProfilerSessionService()));
+            new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
+            new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -188,6 +192,33 @@ public sealed class ShellViewModelTests
         {
             yield return new ProfilerEvent(1, DateTimeOffset.UtcNow, TraceEventType.StatementFinished, TimeSpan.FromMilliseconds(2), "SYSDBA", 7, 8, "select 1 from rdb$database", new ProfilerMetrics(), null, "raw");
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+    }
+
+    private sealed class FakeHistoryWriter : IHistoryWriter
+    {
+        public Task WriteProfilerEventsAsync(Guid? connectionProfileId, IReadOnlyList<ProfilerEvent> events, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task WriteMonitoringSnapshotsAsync(Guid? connectionProfileId, IReadOnlyList<MonitoringSnapshot> snapshots, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class FakeHistoryQueryService : IHistoryQueryService
+    {
+        public Task<HistoryPage<TraceEventHistoryItem>> QueryTraceEventsAsync(HistoryQuery query, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HistoryPage<TraceEventHistoryItem>([], query.Page, query.PageSize, 0));
+        }
+
+        public Task<HistoryPage<MonitoringSnapshotHistoryItem>> QueryMonitoringSnapshotsAsync(HistoryQuery query, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HistoryPage<MonitoringSnapshotHistoryItem>([], query.Page, query.PageSize, 0));
+        }
+    }
+
+    private sealed class FakeHistoryExportService : IHistoryExportService
+    {
+        public Task<ExportResult> ExportAsync(ExportRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new ExportResult("fake.csv", 0));
         }
     }
 }

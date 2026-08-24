@@ -1,4 +1,6 @@
 using FirebirdAdmin.Application.Connections;
+using FirebirdAdmin.Application.History;
+using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FluentAssertions;
@@ -10,7 +12,7 @@ public sealed class ProfilerWorkspaceViewModelTests
     [Fact]
     public void Constructor_ShouldStartDisconnected()
     {
-        var viewModel = new ProfilerWorkspaceViewModel(new FakeProfilerSessionService());
+        var viewModel = new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter());
 
         viewModel.State.Should().Be(ProfilerState.Disconnected);
         viewModel.Message.Should().Contain("Conecte");
@@ -19,7 +21,7 @@ public sealed class ProfilerWorkspaceViewModelTests
     [Fact]
     public async Task StartAsync_ShouldReadEventsAndFollowLatest()
     {
-        var viewModel = new ProfilerWorkspaceViewModel(new FakeProfilerSessionService());
+        var viewModel = new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter());
 
         await viewModel.StartAsync(CreateConnection(), null, CancellationToken.None);
         await WaitUntilAsync(() => viewModel.EventCount == 1);
@@ -33,7 +35,7 @@ public sealed class ProfilerWorkspaceViewModelTests
     public async Task PauseView_ShouldFreezeVisibleEventsButKeepBuffer()
     {
         var service = new FakeProfilerSessionService(twoEvents: true);
-        var viewModel = new ProfilerWorkspaceViewModel(service);
+        var viewModel = new ProfilerWorkspaceViewModel(service, new FakeHistoryWriter());
 
         await viewModel.StartAsync(CreateConnection(), null, CancellationToken.None);
         await WaitUntilAsync(() => viewModel.EventCount == 1);
@@ -124,6 +126,21 @@ public sealed class ProfilerWorkspaceViewModelTests
                 new ProfilerMetrics(),
                 null,
                 "raw");
+        }
+    }
+
+    private sealed class FakeHistoryWriter : IHistoryWriter
+    {
+        public List<ProfilerEvent> ProfilerEvents { get; } = [];
+        public Task WriteProfilerEventsAsync(Guid? connectionProfileId, IReadOnlyList<ProfilerEvent> events, CancellationToken cancellationToken)
+        {
+            ProfilerEvents.AddRange(events);
+            return Task.CompletedTask;
+        }
+
+        public Task WriteMonitoringSnapshotsAsync(Guid? connectionProfileId, IReadOnlyList<MonitoringSnapshot> snapshots, CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
         }
     }
 }
