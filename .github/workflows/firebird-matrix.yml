@@ -1,0 +1,30 @@
+name: Firebird Matrix
+
+on:
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Start Firebird matrix
+        shell: pwsh
+        run: ./scripts/firebird-matrix-up.ps1
+      - name: Wait for Firebird
+        shell: pwsh
+        run: Start-Sleep -Seconds 30
+      - name: Restore
+        run: dotnet restore FirebirdAdmin.sln
+      - name: Build
+        run: dotnet build FirebirdAdmin.sln --no-restore
+      - name: Integration tests
+        shell: pwsh
+        run: ./scripts/firebird-matrix-test.ps1
+      - name: Stop Firebird matrix
+        if: always()
+        shell: pwsh
+        run: ./scripts/firebird-matrix-down.ps1

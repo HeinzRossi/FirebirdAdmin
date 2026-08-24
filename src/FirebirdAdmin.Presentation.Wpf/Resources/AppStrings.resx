@@ -18,6 +18,24 @@
   <data name="ConnectionContextEmpty" xml:space="preserve">
     <value>Nenhuma conexão ativa</value>
   </data>
+  <data name="Connect" xml:space="preserve">
+    <value>Conectar</value>
+  </data>
+  <data name="ConnectionFailed" xml:space="preserve">
+    <value>Falha na conexão</value>
+  </data>
+  <data name="ConnectionProfilesTitle" xml:space="preserve">
+    <value>Perfil de conexão</value>
+  </data>
+  <data name="ConnectedStatus" xml:space="preserve">
+    <value>Conectado</value>
+  </data>
+  <data name="ConnectingStatus" xml:space="preserve">
+    <value>Conectando</value>
+  </data>
+  <data name="Database" xml:space="preserve">
+    <value>Banco/Alias</value>
+  </data>
   <data name="Dashboard" xml:space="preserve">
     <value>Dashboard</value>
   </data>
@@ -26,6 +44,9 @@
   </data>
   <data name="History" xml:space="preserve">
     <value>Histórico</value>
+  </data>
+  <data name="Host" xml:space="preserve">
+    <value>Servidor</value>
   </data>
   <data name="Maintenance" xml:space="preserve">
     <value>Manutenção</value>
@@ -36,23 +57,50 @@
   <data name="Monitoring" xml:space="preserve">
     <value>Monitoramento</value>
   </data>
+  <data name="Name" xml:space="preserve">
+    <value>Nome</value>
+  </data>
   <data name="NavigationTitle" xml:space="preserve">
     <value>Navegação</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Senha</value>
   </data>
   <data name="PollingStopped" xml:space="preserve">
     <value>Polling parado</value>
   </data>
+  <data name="Port" xml:space="preserve">
+    <value>Porta</value>
+  </data>
   <data name="ReadyStatus" xml:space="preserve">
     <value>Aplicação pronta</value>
+  </data>
+  <data name="RememberPassword" xml:space="preserve">
+    <value>Lembrar senha</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="SaveProfile" xml:space="preserve">
+    <value>Salvar perfil</value>
   </data>
   <data name="Settings" xml:space="preserve">
     <value>Configurações</value>
   </data>
+  <data name="Security" xml:space="preserve">
+    <value>Segurança</value>
+  </data>
   <data name="SqlProfiler" xml:space="preserve">
     <value>SQL Profiler</value>
   </data>
+  <data name="TestConnection" xml:space="preserve">
+    <value>Testar conexão</value>
+  </data>
   <data name="TraceStopped" xml:space="preserve">
     <value>Trace parado</value>
+  </data>
+  <data name="UserName" xml:space="preserve">
+    <value>Usuário</value>
   </data>
   <data name="WorkspacePlaceholder" xml:space="preserve">
     <value>Foundation pronta. Conectividade Firebird entra no Sprint 1.</value>
