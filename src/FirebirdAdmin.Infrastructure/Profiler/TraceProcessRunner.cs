@@ -25,6 +25,14 @@ public sealed class TraceProcessRunner : ITraceProcessRunner
             process.StartInfo.ArgumentList.Add(argument);
         }
 
+        if (request.EnvironmentVariables is not null)
+        {
+            foreach (var (key, value) in request.EnvironmentVariables)
+            {
+                process.StartInfo.Environment[key] = value;
+            }
+        }
+
         process.Start();
 
         var outputTask = ReadLinesAsync(process.StandardOutput, onOutputLine, cancellationToken);

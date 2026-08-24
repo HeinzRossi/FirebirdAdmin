@@ -23,7 +23,8 @@ public sealed class ProfilerWorkspaceViewModelTests
     {
         var viewModel = new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter());
 
-        await viewModel.StartAsync(CreateConnection(), null, CancellationToken.None);
+        using var password = CredentialSecret.FromPlainText("masterkey");
+        await viewModel.StartAsync(CreateConnection(), password, CancellationToken.None);
         await WaitUntilAsync(() => viewModel.EventCount == 1);
 
         viewModel.State.Should().Be(ProfilerState.Running);
@@ -37,7 +38,8 @@ public sealed class ProfilerWorkspaceViewModelTests
         var service = new FakeProfilerSessionService(twoEvents: true);
         var viewModel = new ProfilerWorkspaceViewModel(service, new FakeHistoryWriter());
 
-        await viewModel.StartAsync(CreateConnection(), null, CancellationToken.None);
+        using var password = CredentialSecret.FromPlainText("masterkey");
+        await viewModel.StartAsync(CreateConnection(), password, CancellationToken.None);
         await WaitUntilAsync(() => viewModel.EventCount == 1);
         viewModel.PauseView();
         service.ReleaseSecondEvent();
@@ -50,6 +52,19 @@ public sealed class ProfilerWorkspaceViewModelTests
 
         viewModel.EventCount.Should().Be(2);
         viewModel.SelectedEvent!.Sequence.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldFailWithClearMessage_WhenPasswordIsMissing()
+    {
+        var service = new FakeProfilerSessionService();
+        var viewModel = new ProfilerWorkspaceViewModel(service, new FakeHistoryWriter());
+
+        await viewModel.StartAsync(CreateConnection(), null, CancellationToken.None);
+
+        viewModel.State.Should().Be(ProfilerState.Failed);
+        viewModel.Message.Should().Contain("Informe a senha");
+        service.State.Should().Be(ProfilerState.Disconnected);
     }
 
     private static ConnectionContext CreateConnection()

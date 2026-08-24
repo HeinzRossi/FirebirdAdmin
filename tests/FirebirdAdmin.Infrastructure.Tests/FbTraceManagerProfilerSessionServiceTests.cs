@@ -27,9 +27,47 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         runner.Request.Arguments.Should().NotContain("-password");
         runner.Request.Arguments.Should().NotContain("masterkey");
         runner.FetchPath.Should().NotBeNull();
+        runner.FetchFileExistedDuringRun.Should().BeTrue();
+        runner.FetchFileContentDuringRun.Should().Be($"masterkey{Environment.NewLine}");
         File.Exists(runner.FetchPath!).Should().BeFalse();
         profilerEvent.Type.Should().Be(TraceEventType.StatementFinished);
         profilerEvent.Sql.Should().Be("select 1 from rdb$database");
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldNotUseFetchFile_WhenPasswordIsNull()
+    {
+        var runner = new FakeTraceProcessRunner();
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        await service.StartAsync(CreateOptions(), password: null, CancellationToken.None);
+        await service.StopAsync(CancellationToken.None);
+
+        runner.Request.Should().NotBeNull();
+        runner.Request!.Arguments.Should().NotContain("-fetch");
+        runner.FetchPath.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldPublishTechnicalEventAndFail_WhenProcessReturnsNonZero()
+    {
+        var runner = new FakeTraceProcessRunner(exitCode: 2, emitStatement: false);
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(), secret, CancellationToken.None);
+        var profilerEvent = await ReadOneAsync(service);
+
+        profilerEvent.Type.Should().Be(TraceEventType.Technical);
+        profilerEvent.RawTrace.Should().Contain("fbtracemgr finalizou com código 2");
+        service.State.Should().Be(ProfilerState.Failed);
     }
 
     private static async Task<ProfilerEvent> ReadOneAsync(IProfilerSessionService service)
@@ -65,10 +103,12 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         return new ProfilerOptions(context, "test");
     }
 
-    private sealed class FakeTraceProcessRunner : ITraceProcessRunner
+    private sealed class FakeTraceProcessRunner(int exitCode = 0, bool emitStatement = true) : ITraceProcessRunner
     {
         public TraceProcessRequest? Request { get; private set; }
         public string? FetchPath { get; private set; }
+        public bool FetchFileExistedDuringRun { get; private set; }
+        public string? FetchFileContentDuringRun { get; private set; }
 
         public async Task<int> RunAsync(
             TraceProcessRequest request,
@@ -80,15 +120,21 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
             var arguments = request.Arguments.ToArray();
             var fetchIndex = Array.IndexOf(arguments, "-fetch");
             FetchPath = fetchIndex >= 0 ? arguments[fetchIndex + 1] : null;
+            FetchFileExistedDuringRun = FetchPath is not null && File.Exists(FetchPath);
+            FetchFileContentDuringRun = FetchPath is null ? null : await File.ReadAllTextAsync(FetchPath, cancellationToken);
 
-            await onOutputLine("statement finished", cancellationToken);
-            await onOutputLine("user: SYSDBA", cancellationToken);
-            await onOutputLine("attachment: 1", cancellationToken);
-            await onOutputLine("transaction: 2", cancellationToken);
-            await onOutputLine("duration: 1 ms", cancellationToken);
-            await onOutputLine("sql: select 1 from rdb$database", cancellationToken);
-            await onOutputLine(string.Empty, cancellationToken);
-            return 0;
+            if (emitStatement)
+            {
+                await onOutputLine("statement finished", cancellationToken);
+                await onOutputLine("user: SYSDBA", cancellationToken);
+                await onOutputLine("attachment: 1", cancellationToken);
+                await onOutputLine("transaction: 2", cancellationToken);
+                await onOutputLine("duration: 1 ms", cancellationToken);
+                await onOutputLine("sql: select 1 from rdb$database", cancellationToken);
+                await onOutputLine(string.Empty, cancellationToken);
+            }
+
+            return exitCode;
         }
     }
 }

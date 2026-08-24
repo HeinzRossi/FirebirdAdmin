@@ -49,7 +49,7 @@ public sealed class FbTraceManagerProfilerSessionService(
 
         sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         traceConfigPath = Path.Combine(Path.GetTempPath(), $"firebird-admin-trace-{Guid.NewGuid():N}.conf");
-        passwordFetchPath = Path.Combine(Path.GetTempPath(), $"firebird-admin-trace-pwd-{Guid.NewGuid():N}.tmp");
+        passwordFetchPath = null;
 
         File.WriteAllText(
             traceConfigPath,
@@ -59,28 +59,37 @@ public sealed class FbTraceManagerProfilerSessionService(
         var passwordBytes = password?.CopyBytes() ?? [];
         try
         {
-            File.WriteAllBytes(passwordFetchPath, passwordBytes);
+            if (passwordBytes.Length > 0)
+            {
+                passwordFetchPath = Path.Combine(Path.GetTempPath(), $"firebird-admin-trace-pwd-{Guid.NewGuid():N}.tmp");
+                WritePasswordFetchFile(passwordFetchPath, passwordBytes);
+            }
         }
         finally
         {
             Array.Clear(passwordBytes);
         }
 
-        var request = new TraceProcessRequest(
-            traceManager.Path,
-            [
-                "-se",
-                $"{options.Connection.Host}:service_mgr",
-                "-start",
-                "-name",
-                options.SessionName,
-                "-config",
-                traceConfigPath,
-                "-user",
-                options.Connection.UserName,
-                "-fetch",
-                passwordFetchPath
-            ]);
+        var arguments = new List<string>
+        {
+            "-se",
+            $"{options.Connection.Host}:service_mgr",
+            "-start",
+            "-name",
+            options.SessionName,
+            "-config",
+            traceConfigPath,
+            "-user",
+            options.Connection.UserName
+        };
+
+        if (passwordFetchPath is not null)
+        {
+            arguments.Add("-fetch");
+            arguments.Add(passwordFetchPath);
+        }
+
+        var request = new TraceProcessRequest(traceManager.Path, arguments);
 
         runningTask = RunTraceAsync(request, sessionCts.Token);
         State = ProfilerState.Running;
@@ -130,11 +139,17 @@ public sealed class FbTraceManagerProfilerSessionService(
 
         try
         {
-            await traceProcessRunner.RunAsync(
+            var exitCode = await traceProcessRunner.RunAsync(
                 request,
                 async (line, token) => await OnOutputLineAsync(line, block, token),
                 async (line, token) => await PublishTechnicalAsync(line, token),
                 cancellationToken);
+
+            if (exitCode != 0)
+            {
+                State = ProfilerState.Failed;
+                await PublishTechnicalAsync($"fbtracemgr finalizou com código {exitCode}.", CancellationToken.None);
+            }
         }
         catch (OperationCanceledException)
         {
@@ -200,8 +215,41 @@ public sealed class FbTraceManagerProfilerSessionService(
                 null,
                 new ProfilerMetrics(),
                 null,
-                SecretMasker.MaskSecrets(line)),
+                MaskTechnicalLine(line)),
             cancellationToken);
+    }
+
+    private static void WritePasswordFetchFile(string path, byte[] passwordBytes)
+    {
+        var newline = Encoding.UTF8.GetBytes(Environment.NewLine);
+        using var stream = new FileStream(
+            path,
+            FileMode.CreateNew,
+            FileAccess.Write,
+            FileShare.None,
+            bufferSize: 4096,
+            FileOptions.WriteThrough);
+
+        stream.Write(passwordBytes, 0, passwordBytes.Length);
+        stream.Write(newline, 0, newline.Length);
+        stream.Flush(flushToDisk: true);
+
+        var info = new FileInfo(path);
+        if (!info.Exists || info.Length == 0)
+        {
+            throw new IOException("Não foi possível preparar o arquivo temporário de senha do Trace.");
+        }
+    }
+
+    private string MaskTechnicalLine(string line)
+    {
+        var masked = SecretMasker.MaskSecrets(line);
+        if (!string.IsNullOrWhiteSpace(passwordFetchPath))
+        {
+            masked = masked.Replace(passwordFetchPath, "<arquivo-senha-trace>", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return masked;
     }
 
     private void CleanupTemporaryFiles()

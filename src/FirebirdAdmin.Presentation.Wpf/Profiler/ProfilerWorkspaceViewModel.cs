@@ -54,6 +54,12 @@ public sealed partial class ProfilerWorkspaceViewModel(
             return;
         }
 
+        if (password is null)
+        {
+            SetFailed("Informe a senha ou salve o perfil com senha lembrada para iniciar o Profiler.");
+            return;
+        }
+
         State = ProfilerState.Starting;
         Message = "Iniciando sessão Trace...";
         OnPropertyChanged(nameof(StateText));
