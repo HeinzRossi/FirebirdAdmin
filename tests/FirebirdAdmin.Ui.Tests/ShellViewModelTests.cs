@@ -6,6 +6,7 @@ using FirebirdAdmin.Application.Maintenance;
 using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
+using FirebirdAdmin.Application.Security;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
@@ -13,6 +14,7 @@ using FirebirdAdmin.Presentation.Wpf.Maintenance;
 using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
+using FirebirdAdmin.Presentation.Wpf.Security;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Shell;
 using FluentAssertions;
@@ -81,7 +83,8 @@ public sealed class ShellViewModelTests
             new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
             new AlertsCenterViewModel(new FakeAlertStore()),
             new MetadataExplorerViewModel(new FakeMetadataCatalogService()),
-            new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()));
+            new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()),
+            new SecurityWorkspaceViewModel(new FakeSecurityCatalogService()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -361,5 +364,31 @@ public sealed class ShellViewModelTests
         public Task SaveOperationAsync(MaintenanceOperation operation, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task SaveLogAsync(MaintenanceLogLine logLine, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<IReadOnlyList<MaintenanceOperation>> ListRecentAsync(int take, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<MaintenanceOperation>>([]);
+    }
+
+    private sealed class FakeSecurityCatalogService : ISecurityCatalogService
+    {
+        private SecurityCatalog? catalog;
+
+        public Task<SecurityCatalog> LoadCatalogAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
+        {
+            catalog = new SecurityCatalog(
+                [new SecurityUser("SYSDBA", "SEC$USERS", true)],
+                [new SecurityRole("RDB$ADMIN", "SYSDBA")],
+                [new SecurityGrant(new SecurityPrincipalReference("SYSDBA", "User"), new SecurityObjectReference("RDB$ADMIN", "Role"), SecurityPrivilege.FromCode("M"), "SYSDBA", false, SecurityGrantKind.RoleMembership)],
+                DateTimeOffset.UtcNow,
+                SecurityCacheState.Fresh);
+            return Task.FromResult(catalog);
+        }
+
+        public SecurityCatalog? GetCachedCatalog() => catalog;
+
+        public void MarkCacheStale()
+        {
+            if (catalog is not null)
+            {
+                catalog = catalog with { State = SecurityCacheState.Stale };
+            }
+        }
     }
 }

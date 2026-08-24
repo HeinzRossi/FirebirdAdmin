@@ -158,4 +158,19 @@ public partial class MainWindow
     {
         await viewModel.MaintenanceWorkspace.LoadHistoryAsync();
     }
+
+    private async void LoadSecurityButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.SecurityWorkspace.LoadAsync();
+    }
+
+    private async void RefreshSecurityButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.SecurityWorkspace.RefreshAsync();
+    }
+
+    private void MarkSecurityStaleButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        viewModel.SecurityWorkspace.MarkStale();
+    }
 }

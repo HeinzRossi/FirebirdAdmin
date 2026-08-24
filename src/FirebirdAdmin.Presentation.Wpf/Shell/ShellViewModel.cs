@@ -12,6 +12,7 @@ using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
+using FirebirdAdmin.Presentation.Wpf.Security;
 
 namespace FirebirdAdmin.Presentation.Wpf.Shell;
 
@@ -71,7 +72,8 @@ public sealed partial class ShellViewModel : ObservableObject
         HistoryWorkspaceViewModel historyWorkspace,
         AlertsCenterViewModel alertsCenter,
         MetadataExplorerViewModel metadataExplorer,
-        MaintenanceWorkspaceViewModel maintenanceWorkspace)
+        MaintenanceWorkspaceViewModel maintenanceWorkspace,
+        SecurityWorkspaceViewModel securityWorkspace)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
@@ -86,6 +88,7 @@ public sealed partial class ShellViewModel : ObservableObject
         AlertsCenter = alertsCenter;
         MetadataExplorer = metadataExplorer;
         MaintenanceWorkspace = maintenanceWorkspace;
+        SecurityWorkspace = securityWorkspace;
         ProfilerWorkspace.ProfilerEventReceived += ProfilerWorkspace_OnProfilerEventReceived;
 
         NavigationItems =
@@ -95,6 +98,7 @@ public sealed partial class ShellViewModel : ObservableObject
             new(AppStrings.SqlProfiler),
             new(AppStrings.Diagnostics),
             new(AppStrings.Metadata),
+            new("Segurança"),
             new(AppStrings.Maintenance),
             new(AppStrings.History),
             new(AppStrings.Settings)
@@ -138,6 +142,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public AlertsCenterViewModel AlertsCenter { get; }
     public MetadataExplorerViewModel MetadataExplorer { get; }
     public MaintenanceWorkspaceViewModel MaintenanceWorkspace { get; }
+    public SecurityWorkspaceViewModel SecurityWorkspace { get; }
 
     public string ConnectionContext => ActiveConnection is null
         ? AppStrings.ConnectionContextEmpty
@@ -211,8 +216,10 @@ public sealed partial class ShellViewModel : ObservableObject
                 ProfilerWorkspace.SetReady();
                 MetadataExplorer.SetConnection(context, providedSecret ?? savedSecret);
                 MaintenanceWorkspace.SetConnection(context, providedSecret ?? savedSecret);
+                SecurityWorkspace.SetConnection(context, providedSecret ?? savedSecret);
                 _ = MetadataExplorer.LoadCatalogAsync();
                 _ = MaintenanceWorkspace.LoadHistoryAsync();
+                _ = SecurityWorkspace.LoadAsync();
                 await StartMonitoringAsync(profile, providedSecret ?? savedSecret, context, cancellationToken);
             }
 
