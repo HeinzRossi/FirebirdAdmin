@@ -9,4 +9,4 @@
 | M5 — Diagnostics | Rules, Alert Correlator e Central de Alertas |
 | M6 — Metadata | Explorer e dependências |
 | M7 — Maintenance | Backup/Restore/Validation/Sweep |
-| M8 — Hardening | Matriz multi-versão, performance, a11y e release |
+| M8 — Hardening | Matriz multi-versão, performance, a11y e pacote release MVP |

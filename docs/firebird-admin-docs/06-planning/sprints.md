@@ -64,3 +64,7 @@
 
 ## Sprint 12 — Release
 **Objetivo:** packaging, smoke tests e documentação final.
+
+**Tasks:** versionamento, publish win-x64 self-contained, zip reproduzível, smoke automatizado, workflow manual de release e checklist final.
+
+**Entregável:** pacote MVP sem exigir Firebird real, Docker ou credenciais no fluxo padrão.
