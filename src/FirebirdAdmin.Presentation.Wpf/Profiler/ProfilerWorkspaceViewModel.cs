@@ -1,15 +1,19 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
+using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Profiler;
 
 namespace FirebirdAdmin.Presentation.Wpf.Profiler;
 
-public sealed partial class ProfilerWorkspaceViewModel(IProfilerSessionService profilerSessionService) : ObservableObject
+public sealed partial class ProfilerWorkspaceViewModel(
+    IProfilerSessionService profilerSessionService,
+    IHistoryWriter historyWriter) : ObservableObject
 {
     private readonly ProfilerBuffer buffer = new();
     private CancellationTokenSource? readCts;
     private bool suppressInspectSwitch;
+    private Guid? activeConnectionProfileId;
 
     [ObservableProperty]
     private ProfilerState state = ProfilerState.Disconnected;
@@ -27,6 +31,7 @@ public sealed partial class ProfilerWorkspaceViewModel(IProfilerSessionService p
     private ProfilerEventRowViewModel? selectedEvent;
 
     public ObservableCollection<ProfilerEventRowViewModel> Events { get; } = [];
+    public event EventHandler<ProfilerEvent>? ProfilerEventReceived;
 
     public string StateText => State.ToString();
     public int EventCount => Events.Count;
@@ -54,6 +59,7 @@ public sealed partial class ProfilerWorkspaceViewModel(IProfilerSessionService p
         OnPropertyChanged(nameof(StateText));
 
         var options = new ProfilerOptions(connection, $"FirebirdAdmin-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}");
+        activeConnectionProfileId = connection.ProfileId;
         await profilerSessionService.StartAsync(options, password, cancellationToken);
 
         State = ProfilerState.Running;
@@ -158,6 +164,8 @@ public sealed partial class ProfilerWorkspaceViewModel(IProfilerSessionService p
             await foreach (var profilerEvent in profilerSessionService.ReadAllAsync(cancellationToken))
             {
                 buffer.Add(profilerEvent);
+                ProfilerEventReceived?.Invoke(this, profilerEvent);
+                _ = PersistProfilerEventAsync(profilerEvent);
 
                 if (State is not ProfilerState.PausedView)
                 {
@@ -227,5 +235,17 @@ public sealed partial class ProfilerWorkspaceViewModel(IProfilerSessionService p
     {
         OnPropertyChanged(nameof(EventCount));
         OnPropertyChanged(nameof(BufferedCount));
+    }
+
+    private async Task PersistProfilerEventAsync(ProfilerEvent profilerEvent)
+    {
+        try
+        {
+            await historyWriter.WriteProfilerEventsAsync(activeConnectionProfileId, [profilerEvent], CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            Message = $"Falha ao persistir histórico do profiler: {ex.Message}";
+        }
     }
 }

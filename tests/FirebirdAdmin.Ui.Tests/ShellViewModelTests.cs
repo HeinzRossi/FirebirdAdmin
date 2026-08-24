@@ -1,8 +1,16 @@
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Dashboard;
+using FirebirdAdmin.Application.Diagnostics;
+using FirebirdAdmin.Application.History;
+using FirebirdAdmin.Application.Maintenance;
+using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
+using FirebirdAdmin.Presentation.Wpf.Diagnostics;
+using FirebirdAdmin.Presentation.Wpf.History;
+using FirebirdAdmin.Presentation.Wpf.Maintenance;
+using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
@@ -65,9 +73,15 @@ public sealed class ShellViewModelTests
             new FakeCredentialStore(),
             new FakeFirebirdConnectionService(connectionShouldFail),
             new FakeMonitoringSessionService(),
+            new FakeHistoryWriter(),
+            new DiagnosticEngine([new FakeDiagnosticRule()]),
             new TransactionsWorkspaceViewModel(),
             new DashboardViewModel(new DashboardProjectionService()),
-            new ProfilerWorkspaceViewModel(new FakeProfilerSessionService()));
+            new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
+            new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
+            new AlertsCenterViewModel(new FakeAlertStore()),
+            new MetadataExplorerViewModel(new FakeMetadataCatalogService()),
+            new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -189,5 +203,163 @@ public sealed class ShellViewModelTests
             yield return new ProfilerEvent(1, DateTimeOffset.UtcNow, TraceEventType.StatementFinished, TimeSpan.FromMilliseconds(2), "SYSDBA", 7, 8, "select 1 from rdb$database", new ProfilerMetrics(), null, "raw");
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         }
+    }
+
+    private sealed class FakeHistoryWriter : IHistoryWriter
+    {
+        public Task WriteProfilerEventsAsync(Guid? connectionProfileId, IReadOnlyList<ProfilerEvent> events, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task WriteMonitoringSnapshotsAsync(Guid? connectionProfileId, IReadOnlyList<MonitoringSnapshot> snapshots, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class FakeHistoryQueryService : IHistoryQueryService
+    {
+        public Task<HistoryPage<TraceEventHistoryItem>> QueryTraceEventsAsync(HistoryQuery query, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HistoryPage<TraceEventHistoryItem>([], query.Page, query.PageSize, 0));
+        }
+
+        public Task<HistoryPage<MonitoringSnapshotHistoryItem>> QueryMonitoringSnapshotsAsync(HistoryQuery query, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new HistoryPage<MonitoringSnapshotHistoryItem>([], query.Page, query.PageSize, 0));
+        }
+    }
+
+    private sealed class FakeHistoryExportService : IHistoryExportService
+    {
+        public Task<ExportResult> ExportAsync(ExportRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new ExportResult("fake.csv", 0));
+        }
+    }
+
+    private sealed class FakeDiagnosticRule : IDiagnosticRule
+    {
+        public string RuleId => "TEST_RULE";
+
+        public IReadOnlyList<DiagnosticResult> Evaluate(DiagnosticContext context, DiagnosticRuleOptions options)
+        {
+            if (context.MonitoringSnapshot is null)
+            {
+                return [];
+            }
+
+            return
+            [
+                new DiagnosticResult(
+                    RuleId,
+                    DiagnosticSeverity.Low,
+                    "Teste",
+                    new DiagnosticTarget("Session", context.MonitoringSnapshot.SessionId.ToString("N")),
+                    DateTimeOffset.UtcNow,
+                    context.ConnectionProfileId,
+                    context.MonitoringSnapshot.SessionId,
+                    [new DiagnosticEvidence("Count", 1)])
+            ];
+        }
+    }
+
+    private sealed class FakeAlertStore : IAlertStore
+    {
+        private readonly List<Alert> alerts = [];
+        private readonly AlertCorrelator correlator = new();
+
+        public Task<Alert> UpsertAsync(DiagnosticResult result, CancellationToken cancellationToken)
+        {
+            var key = AlertCorrelator.BuildCorrelationKey(result);
+            var existing = alerts.SingleOrDefault(alert => alert.CorrelationKey == key);
+            var alert = correlator.Correlate(result, existing);
+            if (existing is not null)
+            {
+                alerts.Remove(existing);
+            }
+
+            alerts.Add(alert);
+            return Task.FromResult(alert);
+        }
+
+        public Task<IReadOnlyList<Alert>> ListAsync(AlertStatus? status, DiagnosticSeverity? severity, CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<Alert>>(alerts.Where(alert =>
+                (status is null || alert.Status == status) &&
+                (severity is null || alert.Severity == severity)).ToArray());
+        }
+
+        public Task<Alert?> GetByCorrelationKeyAsync(string correlationKey, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(alerts.SingleOrDefault(alert => alert.CorrelationKey == correlationKey));
+        }
+
+        public Task SetStatusAsync(Guid id, AlertStatus status, string? note, CancellationToken cancellationToken)
+        {
+            var alert = alerts.SingleOrDefault(item => item.Id == id);
+            if (alert is not null)
+            {
+                alerts.Remove(alert);
+                alerts.Add(alert with { Status = status, AcknowledgementNote = note });
+            }
+
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeMetadataCatalogService : IMetadataCatalogService
+    {
+        private MetadataCatalog? catalog;
+
+        public Task<MetadataCatalog> LoadCatalogAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
+        {
+            catalog = new MetadataCatalog(
+                [new MetadataObjectSummary(new MetadataObjectReference(MetadataObjectKind.Table, "CUSTOMERS"), "CUSTOMERS")],
+                DateTimeOffset.UtcNow,
+                MetadataCacheState.Fresh);
+            return Task.FromResult(catalog);
+        }
+
+        public Task<MetadataObjectDetails> LoadDetailsAsync(
+            ConnectionContext connection,
+            CredentialSecret? password,
+            MetadataObjectReference reference,
+            CancellationToken cancellationToken)
+        {
+            var summary = new MetadataObjectSummary(reference, reference.Name);
+            return Task.FromResult(new MetadataObjectDetails(summary, [], [], [], [], [], [], null, null));
+        }
+
+        public MetadataCatalog? GetCachedCatalog() => catalog;
+
+        public void MarkCacheStale()
+        {
+            if (catalog is not null)
+            {
+                catalog = catalog with { State = MetadataCacheState.Stale };
+            }
+        }
+    }
+
+    private sealed class FakeMaintenanceService : IMaintenanceService
+    {
+        public MaintenanceOperation? ActiveOperation => null;
+        public event EventHandler<MaintenanceProgress>? ProgressChanged;
+        public event EventHandler<MaintenanceLogLine>? LogReceived;
+
+        public Task<MaintenancePreflightResult> ValidateAsync(MaintenanceRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new MaintenancePreflightResult(true, [], [], ["ok"]));
+        }
+
+        public Task<MaintenanceResult> ExecuteAsync(MaintenanceRequest request, CredentialSecret? password, CancellationToken cancellationToken)
+        {
+            var operation = new MaintenanceOperation(Guid.NewGuid(), request.Connection.ProfileId, request.Type, MaintenanceOperationStatus.Succeeded, request.Source, request.Target, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 0, "ok");
+            ProgressChanged?.Invoke(this, new MaintenanceProgress(operation.Id, "Resultado", 1, "ok", DateTimeOffset.UtcNow));
+            LogReceived?.Invoke(this, new MaintenanceLogLine(operation.Id, DateTimeOffset.UtcNow, "stdout", "ok"));
+            return Task.FromResult(new MaintenanceResult(operation, []));
+        }
+    }
+
+    private sealed class FakeMaintenanceHistoryStore : IMaintenanceHistoryStore
+    {
+        public Task SaveOperationAsync(MaintenanceOperation operation, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SaveLogAsync(MaintenanceLogLine logLine, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<IReadOnlyList<MaintenanceOperation>> ListRecentAsync(int take, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<MaintenanceOperation>>([]);
     }
 }

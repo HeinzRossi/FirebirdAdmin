@@ -2,6 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\FirebirdAdmin.Application\FirebirdAdmin.Application.csproj" />
     <ProjectReference Include="..\FirebirdAdmin.Domain\FirebirdAdmin.Domain.csproj" />
+    <PackageReference Include="Dapper" />
     <PackageReference Include="FirebirdSql.Data.FirebirdClient" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />

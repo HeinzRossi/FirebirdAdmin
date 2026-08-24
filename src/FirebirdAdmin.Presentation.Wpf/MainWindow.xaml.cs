@@ -78,4 +78,84 @@ public partial class MainWindow
     {
         viewModel.ProfilerWorkspace.Clear();
     }
+
+    private async void SearchHistoryButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.HistoryWorkspace.SearchAsync();
+    }
+
+    private async void ExportHistoryCsvButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.HistoryWorkspace.ExportCsvAsync();
+    }
+
+    private async void ExportHistoryJsonButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.HistoryWorkspace.ExportJsonAsync();
+    }
+
+    private async void RefreshAlertsButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.LoadAsync();
+    }
+
+    private async void AcknowledgeAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.AcknowledgeAsync();
+    }
+
+    private async void ResolveAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.ResolveAsync();
+    }
+
+    private async void ReopenAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.AlertsCenter.ReopenAsync();
+    }
+
+    private async void LoadMetadataCatalogButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MetadataExplorer.LoadCatalogAsync();
+    }
+
+    private async void RefreshMetadataCatalogButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MetadataExplorer.RefreshCatalogAsync();
+    }
+
+    private async void RefreshMetadataObjectButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MetadataExplorer.RefreshSelectedAsync();
+    }
+
+    private async void MetadataBackButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MetadataExplorer.BackAsync();
+    }
+
+    private async void MetadataForwardButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MetadataExplorer.ForwardAsync();
+    }
+
+    private async void ValidateMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MaintenanceWorkspace.ValidateAsync();
+    }
+
+    private async void ExecuteMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MaintenanceWorkspace.ExecuteAsync();
+    }
+
+    private void CancelMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        viewModel.MaintenanceWorkspace.Cancel();
+    }
+
+    private async void RefreshMaintenanceHistoryButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MaintenanceWorkspace.LoadHistoryAsync();
+    }
 }
