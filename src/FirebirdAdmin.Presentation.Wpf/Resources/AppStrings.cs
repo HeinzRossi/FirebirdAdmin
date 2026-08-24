@@ -17,6 +17,8 @@ public static class AppStrings
     public static string ConnectedStatus => GetString(nameof(ConnectedStatus));
     public static string ConnectingStatus => GetString(nameof(ConnectingStatus));
     public static string Database => GetString(nameof(Database));
+    public static string SelectDatabase => GetString(nameof(SelectDatabase));
+    public static string SelectDatabaseDialogTitle => GetString(nameof(SelectDatabaseDialogTitle));
     public static string Dashboard => GetString(nameof(Dashboard));
     public static string DashboardOperationalTitle => GetString(nameof(DashboardOperationalTitle));
     public static string Diagnostics => GetString(nameof(Diagnostics));

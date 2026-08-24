@@ -89,10 +89,9 @@ public sealed class FbTraceManagerProfilerSessionService(
             arguments.Add(passwordFetchPath);
         }
 
-        var request = new TraceProcessRequest(traceManager.Path, arguments);
-
-        runningTask = RunTraceAsync(request, sessionCts.Token);
         State = ProfilerState.Running;
+        var request = new TraceProcessRequest(traceManager.Path, arguments);
+        runningTask = RunTraceAsync(request, sessionCts.Token);
 
         return Task.FromResult(new ProfilerSession(
             Guid.NewGuid(),

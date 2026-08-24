@@ -36,6 +36,12 @@
   <data name="Database" xml:space="preserve">
     <value>Banco/Alias</value>
   </data>
+  <data name="SelectDatabase" xml:space="preserve">
+    <value>Selecionar...</value>
+  </data>
+  <data name="SelectDatabaseDialogTitle" xml:space="preserve">
+    <value>Selecionar banco Firebird</value>
+  </data>
   <data name="Dashboard" xml:space="preserve">
     <value>Dashboard</value>
   </data>

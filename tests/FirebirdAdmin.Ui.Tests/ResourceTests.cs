@@ -12,6 +12,8 @@ public sealed class ResourceTests
         AppStrings.ConnectionContextEmpty.Should().NotBeNullOrWhiteSpace();
         AppStrings.Connect.Should().Be("Conectar");
         AppStrings.TestConnection.Should().NotBeNullOrWhiteSpace();
+        AppStrings.SelectDatabase.Should().Be("Selecionar...");
+        AppStrings.SelectDatabaseDialogTitle.Should().Be("Selecionar banco Firebird");
         AppStrings.DashboardOperationalTitle.Should().Be("Dashboard operacional");
         AppStrings.TransactionsTitle.Should().NotBeNullOrWhiteSpace();
         AppStrings.Start.Should().Be("Iniciar");

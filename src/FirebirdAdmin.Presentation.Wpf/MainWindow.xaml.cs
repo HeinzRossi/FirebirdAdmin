@@ -1,4 +1,5 @@
 using FirebirdAdmin.Presentation.Wpf.Shell;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 using ScottPlot;
 using ScottPlot.WPF;
 using System.Windows.Controls;
@@ -121,6 +122,21 @@ public partial class MainWindow
     private async void ConnectButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         await viewModel.ConnectAsync(CurrentPassword);
+    }
+
+    private void SelectDatabaseButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = AppStrings.SelectDatabaseDialogTitle,
+            Filter = "Bancos Firebird (*.fdb;*.gdb)|*.fdb;*.gdb|Todos os arquivos (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            viewModel.Database = dialog.FileName;
+        }
     }
 
     private async void StartProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)

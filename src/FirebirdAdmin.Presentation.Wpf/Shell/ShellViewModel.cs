@@ -157,6 +157,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public string HostLabel => AppStrings.Host;
     public string PortLabel => AppStrings.Port;
     public string DatabaseLabel => AppStrings.Database;
+    public string SelectDatabaseLabel => AppStrings.SelectDatabase;
     public string UserNameLabel => AppStrings.UserName;
     public string PasswordLabel => AppStrings.Password;
     public string RoleLabel => AppStrings.Role;
