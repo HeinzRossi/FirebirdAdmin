@@ -12,4 +12,52 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
+    <Style x:Key="Workspace.Root" TargetType="FrameworkElement">
+        <Setter Property="Margin" Value="{DynamicResource Spacing.Thickness.XL}"/>
+    </Style>
+    <Style x:Key="Workspace.Toolbar" TargetType="WrapPanel">
+        <Setter Property="Margin" Value="0,12,0,8"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Toolbar}"/>
+    </Style>
+    <Style x:Key="Card.Metric" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource Radius.M}"/>
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="Margin" Value="0,0,8,8"/>
+        <Setter Property="MinWidth" Value="150"/>
+    </Style>
+    <Style x:Key="Panel.Detail" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource Radius.L}"/>
+        <Setter Property="Padding" Value="{DynamicResource Spacing.Thickness.L}"/>
+    </Style>
+
+    <Style TargetType="TabControl">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style TargetType="TabItem">
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.App.Foreground}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Toolbar}"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style TargetType="Control">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Stroke="{DynamicResource Brush.Focus}" StrokeThickness="2" RadiusX="4" RadiusY="4" Margin="-3"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

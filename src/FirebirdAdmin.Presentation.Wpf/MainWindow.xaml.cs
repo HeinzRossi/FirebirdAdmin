@@ -242,4 +242,9 @@ public partial class MainWindow
     {
         viewModel.SecurityWorkspace.MarkStale();
     }
+
+    private void ExitButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        Close();
+    }
 }

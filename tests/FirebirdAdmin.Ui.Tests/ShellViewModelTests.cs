@@ -17,6 +17,7 @@ using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Security;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Shell;
+using FirebirdAdmin.Presentation.Wpf.Theme;
 using FluentAssertions;
 
 namespace FirebirdAdmin.Ui.Tests;
@@ -41,6 +42,11 @@ public sealed class ShellViewModelTests
         viewModel.SelectedWorkspace.Should().Be(ShellWorkspace.Dashboard);
         viewModel.WorkspaceTitle.Should().Be(AppStrings.Dashboard);
         viewModel.NavigationItems.Should().HaveCount(9);
+        viewModel.NavigationItems.Should().OnlyContain(item => !string.IsNullOrWhiteSpace(item.IconGlyph));
+        viewModel.NavigationItems.Should().OnlyContain(item => !item.AccessText.Contains(item.Shortcut, StringComparison.Ordinal));
+        viewModel.ExitLabel.Should().Be(AppStrings.Exit);
+        viewModel.CurrentTheme.Should().Be(AppTheme.Light);
+        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeLight);
     }
 
     [Fact]
@@ -131,6 +137,19 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
+    public void ToggleTheme_ShouldSwitchThemeAndUpdateLabel()
+    {
+        var themeService = new FakeThemeService();
+        var viewModel = CreateViewModel(themeService: themeService);
+
+        viewModel.ToggleTheme();
+
+        viewModel.CurrentTheme.Should().Be(AppTheme.Dark);
+        themeService.CurrentTheme.Should().Be(AppTheme.Dark);
+        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeDark);
+    }
+
+    [Fact]
     public async Task ConnectAsync_ShouldSetFailedStateWhenConnectionFails()
     {
         var viewModel = CreateViewModel(connectionShouldFail: true);
@@ -145,7 +164,8 @@ public sealed class ShellViewModelTests
     private static ShellViewModel CreateViewModel(
         bool connectionShouldFail = false,
         FakeMetadataCatalogService? metadataService = null,
-        FakeSecurityCatalogService? securityService = null)
+        FakeSecurityCatalogService? securityService = null,
+        IThemeService? themeService = null)
     {
         return new ShellViewModel(
             new FakeConnectionProfileService(),
@@ -161,7 +181,8 @@ public sealed class ShellViewModelTests
             new AlertsCenterViewModel(new FakeAlertStore()),
             new MetadataExplorerViewModel(metadataService ?? new FakeMetadataCatalogService()),
             new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()),
-            new SecurityWorkspaceViewModel(securityService ?? new FakeSecurityCatalogService()));
+            new SecurityWorkspaceViewModel(securityService ?? new FakeSecurityCatalogService()),
+            themeService ?? new FakeThemeService());
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -195,6 +216,22 @@ public sealed class ShellViewModelTests
         }
 
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class FakeThemeService : IThemeService
+    {
+        public AppTheme CurrentTheme { get; private set; } = AppTheme.Light;
+
+        public void Apply(AppTheme theme)
+        {
+            CurrentTheme = theme;
+        }
+
+        public AppTheme Toggle()
+        {
+            CurrentTheme = CurrentTheme == AppTheme.Light ? AppTheme.Dark : AppTheme.Light;
+            return CurrentTheme;
+        }
     }
 
     private sealed class FakeCredentialStore : ICredentialStore

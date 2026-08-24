@@ -15,7 +15,16 @@ public sealed class ResourceTests
         AppStrings.DashboardOperationalTitle.Should().Be("Dashboard operacional");
         AppStrings.TransactionsTitle.Should().NotBeNullOrWhiteSpace();
         AppStrings.Start.Should().Be("Iniciar");
+        AppStrings.ColumnTransaction.Should().Be("Transaction");
+        AppStrings.ColumnSeverity.Should().Be("Sev");
+        AppStrings.TabEvidence.Should().Be("Evidências");
+        AppStrings.LastUpdatedFormat.Should().Contain("{0}");
+        AppStrings.ExportCsv.Should().Be("CSV");
+        AppStrings.Exit.Should().Be("Sair");
+        AppStrings.ThemeLight.Should().Be("Claro");
+        AppStrings.ThemeDark.Should().Be("Escuro");
+        AppStrings.ThemeToggleFormat.Should().Contain("{0}");
         AppStrings.KeyboardHelp.Should().Contain("Ctrl+1");
-        AppStrings.WorkspacePlaceholder.Should().Contain("Sprint 1");
+        AppStrings.WorkspacePlaceholder.Should().Contain("Conecte");
     }
 }

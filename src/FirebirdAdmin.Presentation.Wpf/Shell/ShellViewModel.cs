@@ -15,6 +15,7 @@ using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Security;
+using FirebirdAdmin.Presentation.Wpf.Theme;
 
 namespace FirebirdAdmin.Presentation.Wpf.Shell;
 
@@ -26,6 +27,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IMonitoringSessionService monitoringSessionService;
     private readonly IHistoryWriter historyWriter;
     private readonly IDiagnosticEngine diagnosticEngine;
+    private readonly IThemeService themeService;
     private CancellationTokenSource? monitoringReadCts;
 
     [ObservableProperty]
@@ -67,6 +69,9 @@ public sealed partial class ShellViewModel : ObservableObject
     [ObservableProperty]
     private ShellWorkspace selectedWorkspace = ShellWorkspace.Dashboard;
 
+    [ObservableProperty]
+    private AppTheme currentTheme;
+
     public ShellViewModel(
         IConnectionProfileService connectionProfileService,
         ICredentialStore credentialStore,
@@ -81,7 +86,8 @@ public sealed partial class ShellViewModel : ObservableObject
         AlertsCenterViewModel alertsCenter,
         MetadataExplorerViewModel metadataExplorer,
         MaintenanceWorkspaceViewModel maintenanceWorkspace,
-        SecurityWorkspaceViewModel securityWorkspace)
+        SecurityWorkspaceViewModel securityWorkspace,
+        IThemeService themeService)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
@@ -89,6 +95,7 @@ public sealed partial class ShellViewModel : ObservableObject
         this.monitoringSessionService = monitoringSessionService;
         this.historyWriter = historyWriter;
         this.diagnosticEngine = diagnosticEngine;
+        this.themeService = themeService;
         TransactionsWorkspace = transactionsWorkspace;
         Dashboard = dashboard;
         ProfilerWorkspace = profilerWorkspace;
@@ -97,19 +104,20 @@ public sealed partial class ShellViewModel : ObservableObject
         MetadataExplorer = metadataExplorer;
         MaintenanceWorkspace = maintenanceWorkspace;
         SecurityWorkspace = securityWorkspace;
+        CurrentTheme = themeService.CurrentTheme;
         ProfilerWorkspace.ProfilerEventReceived += ProfilerWorkspace_OnProfilerEventReceived;
 
         NavigationItems =
         [
-            new(ShellWorkspace.Dashboard, AppStrings.Dashboard, "1", $"_1 {AppStrings.Dashboard}"),
-            new(ShellWorkspace.Monitoring, AppStrings.Monitoring, "2", $"_2 {AppStrings.Monitoring}"),
-            new(ShellWorkspace.SqlProfiler, AppStrings.SqlProfiler, "3", $"_3 {AppStrings.SqlProfiler}"),
-            new(ShellWorkspace.Diagnostics, AppStrings.Diagnostics, "4", $"_4 {AppStrings.Diagnostics}"),
-            new(ShellWorkspace.Metadata, AppStrings.Metadata, "5", $"_5 {AppStrings.Metadata}"),
-            new(ShellWorkspace.Security, AppStrings.Security, "6", $"_6 {AppStrings.Security}"),
-            new(ShellWorkspace.Maintenance, AppStrings.Maintenance, "7", $"_7 {AppStrings.Maintenance}"),
-            new(ShellWorkspace.History, AppStrings.History, "8", $"_8 {AppStrings.History}"),
-            new(ShellWorkspace.Settings, AppStrings.Settings, "9", $"_9 {AppStrings.Settings}")
+            new(ShellWorkspace.Dashboard, AppStrings.Dashboard, "1", "\uE80F", $"_{AppStrings.Dashboard}"),
+            new(ShellWorkspace.Monitoring, AppStrings.Monitoring, "2", "\uE7F4", $"_{AppStrings.Monitoring}"),
+            new(ShellWorkspace.SqlProfiler, AppStrings.SqlProfiler, "3", "\uE943", $"_{AppStrings.SqlProfiler}"),
+            new(ShellWorkspace.Diagnostics, AppStrings.Diagnostics, "4", "\uE814", $"_{AppStrings.Diagnostics}"),
+            new(ShellWorkspace.Metadata, AppStrings.Metadata, "5", "\uE8B7", $"_{AppStrings.Metadata}"),
+            new(ShellWorkspace.Security, AppStrings.Security, "6", "\uE72E", $"_{AppStrings.Security}"),
+            new(ShellWorkspace.Maintenance, AppStrings.Maintenance, "7", "\uE90F", $"_{AppStrings.Maintenance}"),
+            new(ShellWorkspace.History, AppStrings.History, "8", "\uE81C", $"_{AppStrings.History}"),
+            new(ShellWorkspace.Settings, AppStrings.Settings, "9", "\uE713", $"_{AppStrings.Settings}")
         ];
         SelectedNavigationItem = NavigationItems[0];
     }
@@ -139,6 +147,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public string ConfirmLabel => AppStrings.Confirm;
     public string ValidateLabel => AppStrings.Validate;
     public string ExecuteLabel => AppStrings.Execute;
+    public string ExitLabel => AppStrings.Exit;
     public string CancelLabel => AppStrings.Cancel;
     public string UpdateHistoryLabel => AppStrings.UpdateHistory;
     public string AlertsInstruction => AppStrings.AlertsInstruction;
@@ -154,6 +163,9 @@ public sealed partial class ShellViewModel : ObservableObject
     public string SaveProfileLabel => AppStrings.SaveProfile;
     public string TestConnectionLabel => AppStrings.TestConnection;
     public string ConnectLabel => AppStrings.Connect;
+    public string ThemeToggleLabel => string.Format(
+        AppStrings.ThemeToggleFormat,
+        CurrentTheme == AppTheme.Light ? AppStrings.ThemeLight : AppStrings.ThemeDark);
     public string TraceStatus => ProfilerWorkspace.State switch
     {
         Application.Profiler.ProfilerState.Running => "Trace em execução",
@@ -233,6 +245,11 @@ public sealed partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(ReadyStatus));
     }
 
+    partial void OnCurrentThemeChanged(AppTheme value)
+    {
+        OnPropertyChanged(nameof(ThemeToggleLabel));
+    }
+
     partial void OnOperationMessageChanged(string value)
     {
         OnPropertyChanged(nameof(WorkspacePlaceholder));
@@ -302,6 +319,12 @@ public sealed partial class ShellViewModel : ObservableObject
         {
             MaintenanceWorkspace.Cancel();
         }
+    }
+
+    [RelayCommand]
+    public void ToggleTheme()
+    {
+        CurrentTheme = themeService.Toggle();
     }
 
     private async Task ConnectCoreAsync(string password, bool setActiveConnection, CancellationToken cancellationToken)
