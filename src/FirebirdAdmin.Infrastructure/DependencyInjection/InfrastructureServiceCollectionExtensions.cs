@@ -1,12 +1,14 @@
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.History;
+using FirebirdAdmin.Application.Maintenance;
 using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Infrastructure.Connections;
 using FirebirdAdmin.Infrastructure.Diagnostics;
 using FirebirdAdmin.Infrastructure.History;
+using FirebirdAdmin.Infrastructure.Maintenance;
 using FirebirdAdmin.Infrastructure.Metadata;
 using FirebirdAdmin.Infrastructure.Monitoring;
 using FirebirdAdmin.Infrastructure.Persistence;
@@ -45,6 +47,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IRetentionPolicyService, SqliteRetentionPolicyService>();
         services.AddScoped<IHistoryExportService, HistoryExportService>();
         services.AddScoped<IAlertStore, SqliteAlertStore>();
+        services.AddSingleton<IFirebirdToolRunner, FirebirdToolRunner>();
+        services.AddScoped<IMaintenanceHistoryStore, SqliteMaintenanceHistoryStore>();
         services.AddSingleton<InAppNotificationChannel>();
         services.AddSingleton<INotificationChannel>(serviceProvider => serviceProvider.GetRequiredService<InAppNotificationChannel>());
         services.AddSingleton<ITraceConfigurationBuilder, TraceConfigurationBuilder>();

@@ -7,6 +7,7 @@ using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
+using FirebirdAdmin.Presentation.Wpf.Maintenance;
 using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
@@ -69,7 +70,8 @@ public sealed partial class ShellViewModel : ObservableObject
         ProfilerWorkspaceViewModel profilerWorkspace,
         HistoryWorkspaceViewModel historyWorkspace,
         AlertsCenterViewModel alertsCenter,
-        MetadataExplorerViewModel metadataExplorer)
+        MetadataExplorerViewModel metadataExplorer,
+        MaintenanceWorkspaceViewModel maintenanceWorkspace)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
@@ -83,6 +85,7 @@ public sealed partial class ShellViewModel : ObservableObject
         HistoryWorkspace = historyWorkspace;
         AlertsCenter = alertsCenter;
         MetadataExplorer = metadataExplorer;
+        MaintenanceWorkspace = maintenanceWorkspace;
         ProfilerWorkspace.ProfilerEventReceived += ProfilerWorkspace_OnProfilerEventReceived;
 
         NavigationItems =
@@ -134,6 +137,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public HistoryWorkspaceViewModel HistoryWorkspace { get; }
     public AlertsCenterViewModel AlertsCenter { get; }
     public MetadataExplorerViewModel MetadataExplorer { get; }
+    public MaintenanceWorkspaceViewModel MaintenanceWorkspace { get; }
 
     public string ConnectionContext => ActiveConnection is null
         ? AppStrings.ConnectionContextEmpty
@@ -206,7 +210,9 @@ public sealed partial class ShellViewModel : ObservableObject
                 ActiveConnection = context;
                 ProfilerWorkspace.SetReady();
                 MetadataExplorer.SetConnection(context, providedSecret ?? savedSecret);
+                MaintenanceWorkspace.SetConnection(context, providedSecret ?? savedSecret);
                 _ = MetadataExplorer.LoadCatalogAsync();
+                _ = MaintenanceWorkspace.LoadHistoryAsync();
                 await StartMonitoringAsync(profile, providedSecret ?? savedSecret, context, cancellationToken);
             }
 
