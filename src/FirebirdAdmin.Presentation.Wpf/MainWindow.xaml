@@ -455,16 +455,6 @@
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis"/>
-                    <Border Background="{DynamicResource Brush.Accent.Subtle}"
-                            CornerRadius="{DynamicResource Radius.S}"
-                            Padding="6,2"
-                            Margin="10,0,0,0"
-                            VerticalAlignment="Center">
-                        <TextBlock Text="{Binding TitleBarVersionText}"
-                                   Foreground="{DynamicResource Brush.Text.Subtle}"
-                                   FontSize="11"
-                                   TextTrimming="CharacterEllipsis"/>
-                    </Border>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <Button Content="&#xE921;"
