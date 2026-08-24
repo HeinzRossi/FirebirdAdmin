@@ -158,6 +158,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public string AboutDescription => AppStrings.AboutDescription;
     public string AboutCloseLabel => AppStrings.AboutClose;
     public string AboutVersionText => string.Format(AppStrings.AboutVersionFormat, GetInformationalVersion());
+    public string TitleBarVersionText => GetInformationalVersion();
     public string CancelLabel => AppStrings.Cancel;
     public string UpdateHistoryLabel => AppStrings.UpdateHistory;
     public string AlertsInstruction => AppStrings.AlertsInstruction;

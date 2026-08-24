@@ -49,6 +49,7 @@ public sealed class ShellViewModelTests
         viewModel.IsAboutOpen.Should().BeFalse();
         viewModel.CurrentTheme.Should().Be(AppTheme.Light);
         viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeLight);
+        viewModel.TitleBarVersionText.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
