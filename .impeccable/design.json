@@ -1,0 +1,187 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-24T00:00:00-03:00",
+  "title": "Design System: Firebird Admin",
+  "extensions": {
+    "colorMeta": {
+      "neutral-0": {
+        "role": "neutral",
+        "displayName": "Workspace White",
+        "canonical": "#FCFCFD",
+        "tonalRamp": ["#101828", "#344054", "#667085", "#98A2B3", "#CDD2DC", "#E9ECF1", "#F7F8FA", "#FCFCFD"]
+      },
+      "accent-600": {
+        "role": "primary",
+        "displayName": "Operational Teal",
+        "canonical": "#0F766E",
+        "tonalRamp": ["#042F2E", "#115E59", "#0F766E", "#0D9488", "#2DD4BF", "#99F6E4", "#CCFBF1", "#F0FDFA"]
+      },
+      "success-600": {
+        "role": "secondary",
+        "displayName": "Success Green",
+        "canonical": "#15803D",
+        "tonalRamp": ["#052E16", "#166534", "#15803D", "#16A34A", "#4ADE80", "#BBF7D0", "#DCFCE7", "#F0FDF4"]
+      },
+      "warning-600": {
+        "role": "secondary",
+        "displayName": "Warning Amber",
+        "canonical": "#A16207",
+        "tonalRamp": ["#451A03", "#78350F", "#A16207", "#CA8A04", "#FACC15", "#FEF08A", "#FEF9C3", "#FEFCE8"]
+      },
+      "error-600": {
+        "role": "secondary",
+        "displayName": "Error Red",
+        "canonical": "#B42318",
+        "tonalRamp": ["#450A0A", "#7F1D1D", "#B42318", "#DC2626", "#F87171", "#FECACA", "#FEE2E2", "#FEF2F2"]
+      },
+      "info-600": {
+        "role": "secondary",
+        "displayName": "Info Blue",
+        "canonical": "#2563EB",
+        "tonalRamp": ["#172554", "#1E40AF", "#2563EB", "#3B82F6", "#60A5FA", "#BFDBFE", "#DBEAFE", "#EFF6FF"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Rare page-level titles."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Workspace titles and major panel headers."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Compact high-emphasis labels."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Forms, details, and messages."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Badges, status bar, navigation labels, and compact metadata."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-ambient",
+        "value": "BlurRadius 18, ShadowDepth 2, Opacity 0.08",
+        "purpose": "Reserved for isolated repeated cards or transient surfaces."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-only",
+        "value": "150-250ms ease-out for state feedback",
+        "purpose": "Use only for state changes; no decorative page choreography."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "minimum-window",
+        "value": "820px"
+      },
+      {
+        "name": "navigation-expanded",
+        "value": "248px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Default Button",
+      "kind": "button",
+      "refersTo": "button-default",
+      "description": "Compact neutral action button for product workflows.",
+      "html": "<button class=\"ds-btn-default\">Atualizar</button>",
+      "css": ".ds-btn-default { min-height: 30px; padding: 5px 12px; background: #FCFCFD; color: #101828; border: 1px solid #E9ECF1; border-radius: 4px; font: 600 12px/1.35 'Segoe UI', system-ui, sans-serif; } .ds-btn-default:hover { background: #F7F8FA; } .ds-btn-default:focus-visible { outline: 2px solid #0EA5A4; outline-offset: 3px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input-default",
+      "description": "Dense input field for filters, paths, and connection data.",
+      "html": "<input class=\"ds-input\" value=\"localhost\" aria-label=\"Servidor\" />",
+      "css": ".ds-input { min-height: 30px; padding: 4px 7px; background: #FCFCFD; color: #101828; border: 1px solid #E9ECF1; border-radius: 4px; font: 400 14px/1.45 'Segoe UI', system-ui, sans-serif; } .ds-input:focus-visible { outline: 2px solid #0EA5A4; outline-offset: 3px; }"
+    },
+    {
+      "name": "Neutral Badge",
+      "kind": "chip",
+      "refersTo": "badge-neutral",
+      "description": "Compact state and count display.",
+      "html": "<span class=\"ds-badge\">Conectado</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; min-height: 24px; padding: 5px 10px; background: #F7F8FA; color: #101828; border: 1px solid #E9ECF1; border-radius: 4px; font: 600 12px/1.35 'Segoe UI', system-ui, sans-serif; }"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation-panel",
+      "description": "Sidebar item with shortcut affordance.",
+      "html": "<div class=\"ds-nav-item\"><span>Dashboard</span><kbd>1</kbd></div>",
+      "css": ".ds-nav-item { width: 224px; min-height: 34px; padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; color: #101828; font: 600 14px/1.35 'Segoe UI', system-ui, sans-serif; border-radius: 6px; } .ds-nav-item:hover { background: #F7F8FA; } .ds-nav-item:focus-visible { outline: 2px solid #0EA5A4; outline-offset: 3px; } .ds-nav-item kbd { color: #667085; font: 600 12px/1.35 'Segoe UI', system-ui, sans-serif; }"
+    },
+    {
+      "name": "Data Grid",
+      "kind": "custom",
+      "refersTo": "data-grid",
+      "description": "Dense inspection table for monitoring and history.",
+      "html": "<table class=\"ds-grid\"><thead><tr><th>Hora</th><th>Tipo</th><th>Resumo</th></tr></thead><tbody><tr><td>10:42</td><td>Statement</td><td>select * from customers</td></tr></tbody></table>",
+      "css": ".ds-grid { width: 100%; border-collapse: collapse; border: 1px solid #E9ECF1; color: #101828; font: 400 14px/1.45 'Segoe UI', system-ui, sans-serif; } .ds-grid th { height: 30px; color: #667085; font-size: 12px; font-weight: 600; text-align: left; border-bottom: 1px solid #E9ECF1; padding: 0 8px; } .ds-grid td { height: 28px; border-bottom: 1px solid #E9ECF1; padding: 0 8px; }"
+    },
+    {
+      "name": "Metric Card",
+      "kind": "card",
+      "refersTo": "metric-card",
+      "description": "Small operational metric card, never a hero metric.",
+      "html": "<section class=\"ds-metric\"><span>Transações</span><strong>12</strong><small>Última coleta recente</small></section>",
+      "css": ".ds-metric { min-width: 150px; padding: 10px 12px; background: #FCFCFD; border: 1px solid #E9ECF1; border-radius: 6px; color: #101828; font-family: 'Segoe UI', system-ui, sans-serif; } .ds-metric span { display: block; color: #667085; font-size: 12px; font-weight: 600; } .ds-metric strong { display: block; margin-top: 4px; font-size: 14px; font-weight: 600; } .ds-metric small { display: block; margin-top: 2px; color: #667085; font-size: 12px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Painel de Controle",
+    "overview": "Firebird Admin is a dense and calm product interface for database administration. It should feel like a trustworthy control panel: measured, legible, and ready for repeated technical work without theatrical visual noise.",
+    "keyCharacteristics": [
+      "Dense operational surfaces with clear scan paths.",
+      "Segoe UI throughout, with no display-font flourish.",
+      "Cool tinted neutrals with a rare teal accent for focus and primary state.",
+      "Tables, badges, forms, and status bars over marketing-style composition.",
+      "State clarity before visual novelty."
+    ],
+    "rules": [
+      {
+        "name": "The Ten Percent Accent Rule",
+        "body": "Teal is rare. If teal starts decorating the screen, the interface has stopped being a control panel.",
+        "section": "colors"
+      },
+      {
+        "name": "The Native Tool Rule",
+        "body": "Use Segoe UI everywhere. Do not introduce display fonts, brand fonts, or decorative type into product controls.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Workspace Rule",
+        "body": "A workspace is not a card. Use full-page structure for work areas and reserve cards for repeated metrics, details, and modals.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep product screens dense, calm, and predictable.",
+      "Do use the spacing scale: 4, 8, 12, 16, 24, 32.",
+      "Do keep teal rare and functional.",
+      "Do preserve DataGrid virtualization whenever grids can grow.",
+      "Do use visible keyboard focus on every interactive control.",
+      "Do prefer full-width workspace structure over floating page cards.",
+      "Do keep copy Portuguese-first until a localization plan says otherwise."
+    ],
+    "donts": [
+      "Don't use hero metrics, marketing layouts, or landing-page composition inside the app.",
+      "Don't use glassmorphism, gradient text, decorative gradients, or blurred cards.",
+      "Don't use colored side stripes as status indicators.",
+      "Don't nest cards inside cards.",
+      "Don't introduce display fonts or decorative icons into operational UI.",
+      "Don't use semantic colors for decoration.",
+      "Don't hide dangerous or administrative state behind vague copy."
+    ]
+  }
+}
