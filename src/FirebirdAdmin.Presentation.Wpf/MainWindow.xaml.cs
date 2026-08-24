@@ -138,4 +138,24 @@ public partial class MainWindow
     {
         await viewModel.MetadataExplorer.ForwardAsync();
     }
+
+    private async void ValidateMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MaintenanceWorkspace.ValidateAsync();
+    }
+
+    private async void ExecuteMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MaintenanceWorkspace.ExecuteAsync();
+    }
+
+    private void CancelMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        viewModel.MaintenanceWorkspace.Cancel();
+    }
+
+    private async void RefreshMaintenanceHistoryButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        await viewModel.MaintenanceWorkspace.LoadHistoryAsync();
+    }
 }

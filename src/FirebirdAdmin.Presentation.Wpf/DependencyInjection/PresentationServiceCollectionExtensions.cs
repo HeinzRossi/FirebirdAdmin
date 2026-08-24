@@ -1,6 +1,7 @@
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
+using FirebirdAdmin.Presentation.Wpf.Maintenance;
 using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Shell;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
@@ -20,6 +21,7 @@ public static class PresentationServiceCollectionExtensions
         services.AddSingleton<HistoryWorkspaceViewModel>();
         services.AddSingleton<AlertsCenterViewModel>();
         services.AddSingleton<MetadataExplorerViewModel>();
+        services.AddSingleton<MaintenanceWorkspaceViewModel>();
         services.AddSingleton<MainWindow>();
 
         return services;

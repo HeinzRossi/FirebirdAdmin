@@ -2,12 +2,14 @@ using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Dashboard;
 using FirebirdAdmin.Application.Diagnostics;
 using FirebirdAdmin.Application.History;
+using FirebirdAdmin.Application.Maintenance;
 using FirebirdAdmin.Application.Metadata;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Dashboard;
 using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.History;
+using FirebirdAdmin.Presentation.Wpf.Maintenance;
 using FirebirdAdmin.Presentation.Wpf.Metadata;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
@@ -78,7 +80,8 @@ public sealed class ShellViewModelTests
             new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
             new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
             new AlertsCenterViewModel(new FakeAlertStore()),
-            new MetadataExplorerViewModel(new FakeMetadataCatalogService()));
+            new MetadataExplorerViewModel(new FakeMetadataCatalogService()),
+            new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()));
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -331,5 +334,32 @@ public sealed class ShellViewModelTests
                 catalog = catalog with { State = MetadataCacheState.Stale };
             }
         }
+    }
+
+    private sealed class FakeMaintenanceService : IMaintenanceService
+    {
+        public MaintenanceOperation? ActiveOperation => null;
+        public event EventHandler<MaintenanceProgress>? ProgressChanged;
+        public event EventHandler<MaintenanceLogLine>? LogReceived;
+
+        public Task<MaintenancePreflightResult> ValidateAsync(MaintenanceRequest request, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new MaintenancePreflightResult(true, [], [], ["ok"]));
+        }
+
+        public Task<MaintenanceResult> ExecuteAsync(MaintenanceRequest request, CredentialSecret? password, CancellationToken cancellationToken)
+        {
+            var operation = new MaintenanceOperation(Guid.NewGuid(), request.Connection.ProfileId, request.Type, MaintenanceOperationStatus.Succeeded, request.Source, request.Target, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, 0, "ok");
+            ProgressChanged?.Invoke(this, new MaintenanceProgress(operation.Id, "Resultado", 1, "ok", DateTimeOffset.UtcNow));
+            LogReceived?.Invoke(this, new MaintenanceLogLine(operation.Id, DateTimeOffset.UtcNow, "stdout", "ok"));
+            return Task.FromResult(new MaintenanceResult(operation, []));
+        }
+    }
+
+    private sealed class FakeMaintenanceHistoryStore : IMaintenanceHistoryStore
+    {
+        public Task SaveOperationAsync(MaintenanceOperation operation, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SaveLogAsync(MaintenanceLogLine logLine, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<IReadOnlyList<MaintenanceOperation>> ListRecentAsync(int take, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<MaintenanceOperation>>([]);
     }
 }
