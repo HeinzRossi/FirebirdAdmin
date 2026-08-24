@@ -10,7 +10,7 @@ services:
     ports:
       - "3025:3050"
     volumes:
-      - ./artifacts/firebird-matrix/fb25:/firebird
+      - ./artifacts/firebird-matrix/fb25/data:/firebird/data
 
   fb30:
     image: firebirdsql/firebird:3

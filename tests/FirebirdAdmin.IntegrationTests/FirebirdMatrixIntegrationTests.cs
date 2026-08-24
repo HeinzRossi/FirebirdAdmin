@@ -51,19 +51,21 @@ public sealed class FirebirdMatrixIntegrationTests
     {
         foreach (var versionCase in FirebirdVersionTestEnvironment.ReadConfiguredCases())
         {
-            using var password = CredentialSecret.FromPlainText(versionCase.Password);
-            var context = await ConnectAsync(versionCase, password);
+            using var connectionPassword = CredentialSecret.FromPlainText(versionCase.Password);
+            var context = await ConnectAsync(versionCase, connectionPassword);
 
+            using var metadataPassword = CredentialSecret.FromPlainText(versionCase.Password);
             var metadata = await new MetadataCatalogService(
                     new FirebirdMetadataQueryStrategy(new MetadataDdlBuilder()),
                     new MetadataCache())
-                .LoadCatalogAsync(context, password, CancellationToken.None);
+                .LoadCatalogAsync(context, metadataPassword, CancellationToken.None);
             metadata.Objects.Should().NotBeNull(versionCase.Key);
 
+            using var securityPassword = CredentialSecret.FromPlainText(versionCase.Password);
             var security = await new SecurityCatalogService(
                     new FirebirdSecurityQueryStrategy(),
                     new SecurityCache())
-                .LoadCatalogAsync(context, password, CancellationToken.None);
+                .LoadCatalogAsync(context, securityPassword, CancellationToken.None);
             (security.Error is null || security.Error.Length > 0).Should().BeTrue(versionCase.Key);
         }
     }
