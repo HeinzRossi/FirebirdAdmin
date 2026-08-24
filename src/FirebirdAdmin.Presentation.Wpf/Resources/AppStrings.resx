@@ -87,6 +87,9 @@
   <data name="Settings" xml:space="preserve">
     <value>Configurações</value>
   </data>
+  <data name="Security" xml:space="preserve">
+    <value>Segurança</value>
+  </data>
   <data name="SqlProfiler" xml:space="preserve">
     <value>SQL Profiler</value>
   </data>
