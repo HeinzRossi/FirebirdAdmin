@@ -50,3 +50,15 @@ Cenários obrigatórios:
 - filtros históricos;
 - troca Follow/Inspect;
 - polling sem congelamento.
+
+## UX & Performance — Sprint 11
+
+Critérios de aceite:
+
+- o Shell renderiza somente o workspace ativo, evitando custo inicial de todos os grids e do ScottPlot;
+- grids usam virtualização de linha e coluna com reciclagem;
+- troca de workspace preserva estado dos ViewModels carregados;
+- troca de workspace não dispara consultas Firebird fora dos fluxos já existentes de conexão, refresh ou ação explícita;
+- Histórico continua paginado e não carrega o SQLite completo em memória;
+- atalhos `Ctrl+1..9`, `F5` e `Esc` funcionam sem bloquear a UI;
+- campos e ações principais expõem nomes de acessibilidade e ordem de tabulação estável.
