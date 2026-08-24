@@ -29,6 +29,11 @@ public sealed class ResourceTests
         AppStrings.ThemeLight.Should().Be("Claro");
         AppStrings.ThemeDark.Should().Be("Escuro");
         AppStrings.ThemeToggleFormat.Should().Contain("{0}");
+        AppStrings.MaintenanceProgressWaiting.Should().Contain("Aguardando");
+        AppStrings.MaintenanceProgressRunning.Should().Contain("execução");
+        AppStrings.MaintenanceProgressCompleted.Should().Contain("concluída");
+        AppStrings.MaintenanceProgressCancelled.Should().Contain("cancelada");
+        AppStrings.MaintenanceProgressFailed.Should().Contain("falhou");
         AppStrings.KeyboardHelp.Should().Contain("Ctrl+1");
         AppStrings.WorkspacePlaceholder.Should().Contain("Conecte");
     }

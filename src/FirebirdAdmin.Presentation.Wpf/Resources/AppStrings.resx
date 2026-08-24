@@ -393,6 +393,21 @@
   <data name="MaintenanceOperationSweep" xml:space="preserve">
     <value>Sweep</value>
   </data>
+  <data name="MaintenanceProgressWaiting" xml:space="preserve">
+    <value>Aguardando operação.</value>
+  </data>
+  <data name="MaintenanceProgressRunning" xml:space="preserve">
+    <value>Operação em execução...</value>
+  </data>
+  <data name="MaintenanceProgressCompleted" xml:space="preserve">
+    <value>Operação concluída.</value>
+  </data>
+  <data name="MaintenanceProgressCancelled" xml:space="preserve">
+    <value>Operação cancelada.</value>
+  </data>
+  <data name="MaintenanceProgressFailed" xml:space="preserve">
+    <value>Operação falhou.</value>
+  </data>
   <data name="ThemeLight" xml:space="preserve">
     <value>Claro</value>
   </data>

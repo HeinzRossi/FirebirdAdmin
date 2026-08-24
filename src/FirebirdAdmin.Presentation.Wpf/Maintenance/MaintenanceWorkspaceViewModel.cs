@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Maintenance;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.Maintenance;
 
@@ -40,6 +41,18 @@ public sealed partial class MaintenanceWorkspaceViewModel(
 
     [ObservableProperty]
     private string progressText = "Aguardando.";
+
+    [ObservableProperty]
+    private double progressValue;
+
+    [ObservableProperty]
+    private bool isProgressIndeterminate;
+
+    [ObservableProperty]
+    private bool isProgressVisible = true;
+
+    [ObservableProperty]
+    private string progressStatusText = AppStrings.MaintenanceProgressWaiting;
 
     [ObservableProperty]
     private MaintenanceOperationRowViewModel? selectedHistory;
@@ -101,6 +114,11 @@ public sealed partial class MaintenanceWorkspaceViewModel(
         IsRunning = true;
         Stage = "Executar";
         Message = "Executando manutenção.";
+        ProgressValue = 0;
+        IsProgressVisible = true;
+        IsProgressIndeterminate = true;
+        ProgressText = AppStrings.MaintenanceProgressRunning;
+        ProgressStatusText = AppStrings.MaintenanceProgressRunning;
         OnPropertyChanged(nameof(CanExecute));
 
         void OnProgress(object? sender, MaintenanceProgress progress)
@@ -108,6 +126,16 @@ public sealed partial class MaintenanceWorkspaceViewModel(
             ProgressText = progress.Percent is null
                 ? $"{progress.Stage}: {progress.Message}"
                 : $"{progress.Stage}: {progress.Percent:P0} - {progress.Message}";
+            ProgressStatusText = ProgressText;
+
+            if (progress.Percent is null)
+            {
+                IsProgressIndeterminate = IsRunning;
+                return;
+            }
+
+            IsProgressIndeterminate = false;
+            ProgressValue = Math.Clamp(progress.Percent.Value * 100, 0, 100);
         }
 
         void OnLog(object? sender, MaintenanceLogLine line)
@@ -122,6 +150,7 @@ public sealed partial class MaintenanceWorkspaceViewModel(
             var result = await maintenanceService.ExecuteAsync(request, password, executionCts.Token);
             Message = result.Operation.Message;
             Stage = result.Operation.Status.ToString();
+            ApplyFinalProgressState(result.Operation.Status);
             await LoadHistoryAsync(CancellationToken.None);
         }
         finally
@@ -136,6 +165,32 @@ public sealed partial class MaintenanceWorkspaceViewModel(
     public void Cancel()
     {
         executionCts?.Cancel();
+    }
+
+    private void ApplyFinalProgressState(MaintenanceOperationStatus status)
+    {
+        IsProgressVisible = true;
+        IsProgressIndeterminate = false;
+
+        switch (status)
+        {
+            case MaintenanceOperationStatus.Succeeded:
+                ProgressValue = 100;
+                ProgressStatusText = AppStrings.MaintenanceProgressCompleted;
+                ProgressText = AppStrings.MaintenanceProgressCompleted;
+                break;
+            case MaintenanceOperationStatus.Cancelled:
+                ProgressStatusText = AppStrings.MaintenanceProgressCancelled;
+                ProgressText = AppStrings.MaintenanceProgressCancelled;
+                break;
+            case MaintenanceOperationStatus.Failed:
+                ProgressStatusText = AppStrings.MaintenanceProgressFailed;
+                ProgressText = AppStrings.MaintenanceProgressFailed;
+                break;
+            default:
+                ProgressStatusText = ProgressText;
+                break;
+        }
     }
 
     public async Task LoadHistoryAsync(CancellationToken cancellationToken = default)

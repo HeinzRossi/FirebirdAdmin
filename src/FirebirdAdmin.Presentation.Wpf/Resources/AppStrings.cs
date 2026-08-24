@@ -142,6 +142,11 @@ public static class AppStrings
     public static string MaintenanceOperationRestore => GetString(nameof(MaintenanceOperationRestore));
     public static string MaintenanceOperationValidation => GetString(nameof(MaintenanceOperationValidation));
     public static string MaintenanceOperationSweep => GetString(nameof(MaintenanceOperationSweep));
+    public static string MaintenanceProgressWaiting => GetString(nameof(MaintenanceProgressWaiting));
+    public static string MaintenanceProgressRunning => GetString(nameof(MaintenanceProgressRunning));
+    public static string MaintenanceProgressCompleted => GetString(nameof(MaintenanceProgressCompleted));
+    public static string MaintenanceProgressCancelled => GetString(nameof(MaintenanceProgressCancelled));
+    public static string MaintenanceProgressFailed => GetString(nameof(MaintenanceProgressFailed));
     public static string ThemeLight => GetString(nameof(ThemeLight));
     public static string ThemeDark => GetString(nameof(ThemeDark));
     public static string ThemeToggleFormat => GetString(nameof(ThemeToggleFormat));
