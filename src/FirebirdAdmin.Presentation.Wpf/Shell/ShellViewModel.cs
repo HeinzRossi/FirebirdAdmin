@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FirebirdAdmin.Application.Connections;
@@ -116,6 +117,32 @@ public sealed partial class ShellViewModel : ObservableObject
     public string ApplicationName => AppStrings.AppName;
     public string NavigationTitle => AppStrings.NavigationTitle;
     public string ConnectionProfilesTitle => AppStrings.ConnectionProfilesTitle;
+    public string DashboardOperationalTitle => AppStrings.DashboardOperationalTitle;
+    public string TransactionsTitle => AppStrings.TransactionsTitle;
+    public string TransactionDetailsTitle => AppStrings.TransactionDetailsTitle;
+    public string TransactionsFilterLabel => AppStrings.TransactionsFilterLabel;
+    public string StartLabel => AppStrings.Start;
+    public string PauseViewLabel => AppStrings.PauseView;
+    public string FollowLabel => AppStrings.Follow;
+    public string StopLabel => AppStrings.Stop;
+    public string ClearLabel => AppStrings.Clear;
+    public string SearchLabel => AppStrings.Search;
+    public string RefreshLabel => AppStrings.Refresh;
+    public string AcknowledgeLabel => AppStrings.Acknowledge;
+    public string ResolveLabel => AppStrings.Resolve;
+    public string ReopenLabel => AppStrings.Reopen;
+    public string LoadLabel => AppStrings.Load;
+    public string ObjectLabel => AppStrings.Object;
+    public string BackLabel => AppStrings.Back;
+    public string ForwardLabel => AppStrings.Forward;
+    public string MarkStaleLabel => AppStrings.MarkStale;
+    public string ConfirmLabel => AppStrings.Confirm;
+    public string ValidateLabel => AppStrings.Validate;
+    public string ExecuteLabel => AppStrings.Execute;
+    public string CancelLabel => AppStrings.Cancel;
+    public string UpdateHistoryLabel => AppStrings.UpdateHistory;
+    public string AlertsInstruction => AppStrings.AlertsInstruction;
+    public string KeyboardHelp => AppStrings.KeyboardHelp;
     public string NameLabel => AppStrings.Name;
     public string HostLabel => AppStrings.Host;
     public string PortLabel => AppStrings.Port;
@@ -282,36 +309,53 @@ public sealed partial class ShellViewModel : ObservableObject
         ConnectionState = ShellConnectionState.Connecting;
         OperationMessage = AppStrings.ConnectingStatus;
 
+        byte[]? credentialBytes = null;
         try
         {
-            using var providedSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(providedSecret), cancellationToken);
-            using var savedSecret = providedSecret is null ? await credentialStore.TryLoadAsync(profile.Id, cancellationToken) : null;
+            using var profileSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
+            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(profileSecret), cancellationToken);
+            using var savedSecret = profileSecret is null ? await credentialStore.TryLoadAsync(profile.Id, cancellationToken) : null;
 
+            credentialBytes = !string.IsNullOrEmpty(password)
+                ? Encoding.UTF8.GetBytes(password)
+                : savedSecret?.CopyBytes();
+
+            using var connectionSecret = CreateSecretCopy(credentialBytes);
             var context = await firebirdConnectionService.ConnectAsync(
-                new ConnectionRequest(profile, providedSecret ?? savedSecret),
+                new ConnectionRequest(profile, connectionSecret),
                 cancellationToken);
 
             if (setActiveConnection)
             {
                 ActiveConnection = context;
                 ProfilerWorkspace.SetReady();
-                MetadataExplorer.SetConnection(context, providedSecret ?? savedSecret);
-                MaintenanceWorkspace.SetConnection(context, providedSecret ?? savedSecret);
-                SecurityWorkspace.SetConnection(context, providedSecret ?? savedSecret);
+                using var metadataSecret = CreateSecretCopy(credentialBytes);
+                using var maintenanceSecret = CreateSecretCopy(credentialBytes);
+                using var securitySecret = CreateSecretCopy(credentialBytes);
+                using var monitoringSecret = CreateSecretCopy(credentialBytes);
+                MetadataExplorer.SetConnection(context, metadataSecret);
+                MaintenanceWorkspace.SetConnection(context, maintenanceSecret);
+                SecurityWorkspace.SetConnection(context, securitySecret);
                 _ = MetadataExplorer.LoadCatalogAsync();
                 _ = MaintenanceWorkspace.LoadHistoryAsync();
                 _ = SecurityWorkspace.LoadAsync();
-                await StartMonitoringAsync(profile, providedSecret ?? savedSecret, context, cancellationToken);
+                await StartMonitoringAsync(profile, monitoringSecret, context, cancellationToken);
             }
 
             ConnectionState = ShellConnectionState.Connected;
-            OperationMessage = setActiveConnection ? AppStrings.ConnectedStatus : "Teste de conexão concluído.";
+            OperationMessage = setActiveConnection ? AppStrings.ConnectedStatus : AppStrings.TestConnectionSucceeded;
         }
         catch (Exception ex)
         {
             ConnectionState = ShellConnectionState.ConnectionFailed;
             OperationMessage = ex.Message;
+        }
+        finally
+        {
+            if (credentialBytes is not null)
+            {
+                Array.Clear(credentialBytes);
+            }
         }
     }
 
@@ -398,6 +442,11 @@ public sealed partial class ShellViewModel : ObservableObject
             Role,
             RememberPassword,
             secret);
+    }
+
+    private static CredentialSecret? CreateSecretCopy(byte[]? bytes)
+    {
+        return bytes is null ? null : CredentialSecret.FromBytes(bytes);
     }
 
     private async Task PersistMonitoringSnapshotAsync(MonitoringSnapshot snapshot)

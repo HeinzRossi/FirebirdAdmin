@@ -14,5 +14,18 @@
         <Setter Property="ColumnHeaderHeight" Value="30"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
         <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style TargetType="Control">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Stroke="{DynamicResource Brush.Focus}" StrokeThickness="2" RadiusX="4" RadiusY="4" Margin="-3"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
     </Style>
 </ResourceDictionary>

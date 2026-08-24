@@ -39,6 +39,9 @@
   <data name="Dashboard" xml:space="preserve">
     <value>Dashboard</value>
   </data>
+  <data name="DashboardOperationalTitle" xml:space="preserve">
+    <value>Dashboard operacional</value>
+  </data>
   <data name="Diagnostics" xml:space="preserve">
     <value>Diagnóstico</value>
   </data>
@@ -56,6 +59,15 @@
   </data>
   <data name="Monitoring" xml:space="preserve">
     <value>Monitoramento</value>
+  </data>
+  <data name="TransactionsTitle" xml:space="preserve">
+    <value>Monitoramento - Transações</value>
+  </data>
+  <data name="TransactionDetailsTitle" xml:space="preserve">
+    <value>Detalhes da transação</value>
+  </data>
+  <data name="TransactionsFilterLabel" xml:space="preserve">
+    <value>Filtro SQL/ID</value>
   </data>
   <data name="Name" xml:space="preserve">
     <value>Nome</value>
@@ -83,6 +95,75 @@
   </data>
   <data name="SaveProfile" xml:space="preserve">
     <value>Salvar perfil</value>
+  </data>
+  <data name="Start" xml:space="preserve">
+    <value>Iniciar</value>
+  </data>
+  <data name="PauseView" xml:space="preserve">
+    <value>Pausar visualização</value>
+  </data>
+  <data name="Follow" xml:space="preserve">
+    <value>Follow</value>
+  </data>
+  <data name="Stop" xml:space="preserve">
+    <value>Encerrar</value>
+  </data>
+  <data name="Clear" xml:space="preserve">
+    <value>Limpar</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Pesquisar</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Atualizar</value>
+  </data>
+  <data name="Acknowledge" xml:space="preserve">
+    <value>Reconhecer</value>
+  </data>
+  <data name="Resolve" xml:space="preserve">
+    <value>Resolver</value>
+  </data>
+  <data name="Reopen" xml:space="preserve">
+    <value>Reabrir</value>
+  </data>
+  <data name="Load" xml:space="preserve">
+    <value>Carregar</value>
+  </data>
+  <data name="Object" xml:space="preserve">
+    <value>Objeto</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Voltar</value>
+  </data>
+  <data name="Forward" xml:space="preserve">
+    <value>Avançar</value>
+  </data>
+  <data name="MarkStale" xml:space="preserve">
+    <value>Marcar stale</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Confirmar</value>
+  </data>
+  <data name="Validate" xml:space="preserve">
+    <value>Validar</value>
+  </data>
+  <data name="Execute" xml:space="preserve">
+    <value>Executar</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="UpdateHistory" xml:space="preserve">
+    <value>Atualizar histórico</value>
+  </data>
+  <data name="AlertsInstruction" xml:space="preserve">
+    <value>F5 atualiza a central; use status e severidade para filtrar.</value>
+  </data>
+  <data name="KeyboardHelp" xml:space="preserve">
+    <value>Ctrl+1..9 navega | F5 atualiza | Esc cancela</value>
+  </data>
+  <data name="TestConnectionSucceeded" xml:space="preserve">
+    <value>Teste de conexão concluído.</value>
   </data>
   <data name="Settings" xml:space="preserve">
     <value>Configurações</value>

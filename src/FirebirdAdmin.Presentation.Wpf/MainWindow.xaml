@@ -6,7 +6,7 @@
         Title="{Binding ApplicationName}"
         Width="1180"
         Height="760"
-        MinWidth="980"
+        MinWidth="820"
         MinHeight="640"
         Background="{DynamicResource Brush.App.Background}"
         Foreground="{DynamicResource Brush.App.Foreground}"
@@ -27,7 +27,7 @@
                     </Grid.RowDefinitions>
                     <DockPanel Grid.Row="0">
                         <StackPanel>
-                            <TextBlock Text="Dashboard operacional" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                            <TextBlock Text="{Binding DataContext.DashboardOperationalTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
                             <TextBlock Text="{Binding HealthMessage}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -36,10 +36,10 @@
                         </StackPanel>
                     </DockPanel>
                     <ItemsControl Grid.Row="1" ItemsSource="{Binding Metrics}" Margin="0,14,0,14">
-                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="5"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{DynamicResource Brush.Surface.Workspace}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}" Padding="12,10" Margin="0,0,8,0">
+                                <Border Background="{DynamicResource Brush.Surface.Workspace}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}" Padding="12,10" Margin="0,0,8,8" MinWidth="150">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Label}" Style="{DynamicResource Text.StatusBar}"/>
                                         <TextBlock Text="{Binding Value}" Style="{DynamicResource Text.NavigationItem}" Margin="0,4,0,0"/>
@@ -59,7 +59,7 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="140"/></Grid.RowDefinitions>
                 <DockPanel Grid.Row="0">
                     <StackPanel>
-                        <TextBlock Text="Monitoramento - Transações" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                        <TextBlock Text="{Binding DataContext.TransactionsTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
                         <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -69,7 +69,7 @@
                 </DockPanel>
                 <Grid Grid.Row="1" Margin="0,16,0,10">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="Filtro SQL/ID" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding DataContext.TransactionsFilterLabel, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/>
                     <TextBox Grid.Column="1" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filtro de transações" TabIndex="10"/>
                 </Grid>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Transactions}" SelectedItem="{Binding SelectedTransaction}" AutomationProperties.Name="Lista de transações" TabIndex="11">
@@ -86,7 +86,7 @@
                 </DataGrid>
                 <Border Grid.Row="3" Margin="0,12,0,0" Background="{DynamicResource Brush.Surface.Workspace}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1" CornerRadius="{DynamicResource Radius.L}" Padding="{DynamicResource Spacing.Thickness.L}">
                     <StackPanel>
-                        <TextBlock Text="Detalhes da transação" Style="{DynamicResource Text.NavigationItem}"/>
+                        <TextBlock Text="{Binding DataContext.TransactionDetailsTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.NavigationItem}"/>
                         <TextBlock Text="{Binding SelectedTransaction.TransactionId, StringFormat=ID: {0}}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,0"/>
                         <TextBlock Text="{Binding SelectedTransaction.AttachmentId, StringFormat=Attachment: {0}}" Style="{DynamicResource Text.EmptyStateBody}"/>
                         <TextBlock Text="{Binding SelectedTransaction.StartedAt, StringFormat=Início: {0}}" Style="{DynamicResource Text.EmptyStateBody}"/>
@@ -108,15 +108,14 @@
                         <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding BufferedCount, StringFormat=Buffer: {0}}"/></Border>
                     </StackPanel>
                 </DockPanel>
-                <Grid Grid.Row="1" Margin="0,12,0,8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <Button Grid.Column="0" Content="_Iniciar" Click="StartProfilerButton_OnClick" MinWidth="82" AutomationProperties.Name="Iniciar SQL Profiler" TabIndex="20"/>
-                    <Button Grid.Column="1" Content="_Pausar visualização" Click="PauseProfilerButton_OnClick" MinWidth="138" Margin="8,0,0,0" AutomationProperties.Name="Pausar visualização do Profiler" TabIndex="21"/>
-                    <Button Grid.Column="2" Content="_Follow" Click="FollowProfilerButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Retornar ao modo Follow" TabIndex="22"/>
-                    <Button Grid.Column="3" Content="_Encerrar" Click="StopProfilerButton_OnClick" MinWidth="86" Margin="8,0,0,0" AutomationProperties.Name="Encerrar captura Trace" TabIndex="23"/>
-                    <Button Grid.Column="4" Content="_Limpar" Click="ClearProfilerButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Limpar visualização do Profiler" TabIndex="24"/>
-                    <TextBox Grid.Column="5" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" AutomationProperties.Name="Filtro SQL do Profiler" TabIndex="25"/>
-                </Grid>
+                <WrapPanel Grid.Row="1" Margin="0,12,0,8">
+                    <Button Content="{Binding DataContext.StartLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="StartProfilerButton_OnClick" MinWidth="82" AutomationProperties.Name="Iniciar SQL Profiler" TabIndex="20"/>
+                    <Button Content="{Binding DataContext.PauseViewLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="PauseProfilerButton_OnClick" MinWidth="138" Margin="8,0,0,8" AutomationProperties.Name="Pausar visualização do Profiler" TabIndex="21"/>
+                    <Button Content="{Binding DataContext.FollowLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="FollowProfilerButton_OnClick" MinWidth="76" Margin="8,0,0,8" AutomationProperties.Name="Retornar ao modo Follow" TabIndex="22"/>
+                    <Button Content="{Binding DataContext.StopLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="StopProfilerButton_OnClick" MinWidth="86" Margin="8,0,0,8" AutomationProperties.Name="Encerrar captura Trace" TabIndex="23"/>
+                    <Button Content="{Binding DataContext.ClearLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ClearProfilerButton_OnClick" MinWidth="76" Margin="8,0,0,8" AutomationProperties.Name="Limpar visualização do Profiler" TabIndex="24"/>
+                    <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Width="260" Margin="8,0,0,8" AutomationProperties.Name="Filtro SQL do Profiler" TabIndex="25"/>
+                </WrapPanel>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent}" AutomationProperties.Name="Eventos do SQL Profiler" TabIndex="26">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="#" Binding="{Binding Sequence}" Width="64"/>
@@ -184,11 +183,11 @@
                     <Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <ComboBox Grid.Column="0" Text="{Binding StatusFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" AutomationProperties.Name="Filtro de status de alerta" TabIndex="40"/>
                     <ComboBox Grid.Column="1" Text="{Binding SeverityFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Margin="8,0,0,0" AutomationProperties.Name="Filtro de severidade de alerta" TabIndex="41"/>
-                    <TextBlock Grid.Column="2" Text="F5 atualiza a central; use status e severidade para filtrar." Style="{DynamicResource Text.EmptyStateBody}" VerticalAlignment="Center" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
-                    <Button Grid.Column="3" Content="_Atualizar" Click="RefreshAlertsButton_OnClick" MinWidth="86" Margin="8,0,0,0" AutomationProperties.Name="Atualizar alertas" TabIndex="43"/>
-                    <Button Grid.Column="4" Content="_Reconhecer" Click="AcknowledgeAlertButton_OnClick" MinWidth="98" Margin="8,0,0,0" AutomationProperties.Name="Reconhecer alerta" TabIndex="44"/>
-                    <Button Grid.Column="5" Content="Resolver" Click="ResolveAlertButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Resolver alerta" TabIndex="45"/>
-                    <Button Grid.Column="6" Content="Reabrir" Click="ReopenAlertButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Reabrir alerta" TabIndex="46"/>
+                    <TextBlock Grid.Column="2" Text="{Binding DataContext.AlertsInstruction, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateBody}" VerticalAlignment="Center" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
+                    <Button Grid.Column="3" Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshAlertsButton_OnClick" MinWidth="86" Margin="8,0,0,0" AutomationProperties.Name="Atualizar alertas" TabIndex="43"/>
+                    <Button Grid.Column="4" Content="{Binding DataContext.AcknowledgeLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="AcknowledgeAlertButton_OnClick" MinWidth="98" Margin="8,0,0,0" AutomationProperties.Name="Reconhecer alerta" TabIndex="44"/>
+                    <Button Grid.Column="5" Content="{Binding DataContext.ResolveLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ResolveAlertButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Resolver alerta" TabIndex="45"/>
+                    <Button Grid.Column="6" Content="{Binding DataContext.ReopenLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ReopenAlertButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Reabrir alerta" TabIndex="46"/>
                 </Grid>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Alerts}" SelectedItem="{Binding SelectedAlert}" AutomationProperties.Name="Central de alertas" TabIndex="47">
                     <DataGrid.Columns>
@@ -221,11 +220,11 @@
                 <Grid Grid.Row="1" Margin="0,12,0,8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Busca de metadata" TabIndex="50"/>
-                    <Button Grid.Column="1" Content="_Carregar" Click="LoadMetadataCatalogButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Carregar catálogo de metadata" TabIndex="51"/>
-                    <Button Grid.Column="2" Content="_Atualizar" Click="RefreshMetadataCatalogButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Atualizar catálogo de metadata" TabIndex="52"/>
-                    <Button Grid.Column="3" Content="Objeto" Click="RefreshMetadataObjectButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Atualizar objeto de metadata" TabIndex="53"/>
-                    <Button Grid.Column="4" Content="Voltar" Click="MetadataBackButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Voltar metadata" TabIndex="54"/>
-                    <Button Grid.Column="5" Content="Avançar" Click="MetadataForwardButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Avançar metadata" TabIndex="55"/>
+                    <Button Grid.Column="1" Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadMetadataCatalogButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Carregar catálogo de metadata" TabIndex="51"/>
+                    <Button Grid.Column="2" Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataCatalogButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Atualizar catálogo de metadata" TabIndex="52"/>
+                    <Button Grid.Column="3" Content="{Binding DataContext.ObjectLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataObjectButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Atualizar objeto de metadata" TabIndex="53"/>
+                    <Button Grid.Column="4" Content="{Binding DataContext.BackLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MetadataBackButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Voltar metadata" TabIndex="54"/>
+                    <Button Grid.Column="5" Content="{Binding DataContext.ForwardLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MetadataForwardButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Avançar metadata" TabIndex="55"/>
                 </Grid>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Objects}" SelectedItem="{Binding SelectedObject}" AutomationProperties.Name="Objetos de metadata" TabIndex="56">
                     <DataGrid.Columns>
@@ -259,9 +258,9 @@
                 <Grid Grid.Row="1" Margin="0,10,0,8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filtro de segurança" TabIndex="60"/>
-                    <Button Grid.Column="1" Content="_Carregar" Click="LoadSecurityButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Carregar segurança" TabIndex="61"/>
-                    <Button Grid.Column="2" Content="_Atualizar" Click="RefreshSecurityButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Atualizar segurança" TabIndex="62"/>
-                    <Button Grid.Column="3" Content="Marcar stale" Click="MarkSecurityStaleButton_OnClick" MinWidth="98" Margin="8,0,0,0" AutomationProperties.Name="Marcar cache de segurança stale" TabIndex="63"/>
+                    <Button Grid.Column="1" Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadSecurityButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Carregar segurança" TabIndex="61"/>
+                    <Button Grid.Column="2" Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshSecurityButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Atualizar segurança" TabIndex="62"/>
+                    <Button Grid.Column="3" Content="{Binding DataContext.MarkStaleLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MarkSecurityStaleButton_OnClick" MinWidth="98" Margin="8,0,0,0" AutomationProperties.Name="Marcar cache de segurança stale" TabIndex="63"/>
                 </Grid>
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -291,16 +290,16 @@
                     <ComboBox Grid.Column="0" Text="{Binding OperationType, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" AutomationProperties.Name="Tipo de operação de manutenção" TabIndex="70"><ComboBoxItem Content="Backup"/><ComboBoxItem Content="Restore"/><ComboBoxItem Content="Validation"/><ComboBoxItem Content="Sweep"/></ComboBox>
                     <TextBox Grid.Column="1" Text="{Binding SourcePath, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" AutomationProperties.Name="Caminho de origem da manutenção" TabIndex="71"/>
                     <TextBox Grid.Column="2" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" AutomationProperties.Name="Caminho de destino da manutenção" TabIndex="72"/>
-                    <CheckBox Grid.Column="3" Content="Confirmar" IsChecked="{Binding Confirmed}" VerticalAlignment="Center" Margin="8,0,0,0" AutomationProperties.Name="Confirmar operação de manutenção" TabIndex="73"/>
-                    <Button Grid.Column="4" Content="_Validar" Click="ValidateMaintenanceButton_OnClick" MinWidth="74" Margin="8,0,0,0" AutomationProperties.Name="Validar manutenção" TabIndex="74"/>
-                    <Button Grid.Column="5" Content="_Executar" Click="ExecuteMaintenanceButton_OnClick" IsEnabled="{Binding CanExecute}" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Executar manutenção" TabIndex="75"/>
-                    <Button Grid.Column="6" Content="_Cancelar" Click="CancelMaintenanceButton_OnClick" MinWidth="78" Margin="8,0,0,0" AutomationProperties.Name="Cancelar manutenção" TabIndex="76"/>
+                    <CheckBox Grid.Column="3" Content="{Binding DataContext.ConfirmLabel, RelativeSource={RelativeSource AncestorType=Window}}" IsChecked="{Binding Confirmed}" VerticalAlignment="Center" Margin="8,0,0,0" AutomationProperties.Name="Confirmar operação de manutenção" TabIndex="73"/>
+                    <Button Grid.Column="4" Content="{Binding DataContext.ValidateLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ValidateMaintenanceButton_OnClick" MinWidth="74" Margin="8,0,0,0" AutomationProperties.Name="Validar manutenção" TabIndex="74"/>
+                    <Button Grid.Column="5" Content="{Binding DataContext.ExecuteLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ExecuteMaintenanceButton_OnClick" IsEnabled="{Binding CanExecute}" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Executar manutenção" TabIndex="75"/>
+                    <Button Grid.Column="6" Content="{Binding DataContext.CancelLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="CancelMaintenanceButton_OnClick" MinWidth="78" Margin="8,0,0,0" AutomationProperties.Name="Cancelar manutenção" TabIndex="76"/>
                 </Grid>
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding ToolsetText}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
-                    <Button Grid.Row="0" Grid.Column="1" Content="Atualizar histórico" Click="RefreshMaintenanceHistoryButton_OnClick" HorizontalAlignment="Right" MinWidth="126" AutomationProperties.Name="Atualizar histórico de manutenção"/>
+                    <Button Grid.Row="0" Grid.Column="1" Content="{Binding DataContext.UpdateHistoryLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMaintenanceHistoryButton_OnClick" HorizontalAlignment="Right" MinWidth="126" AutomationProperties.Name="Atualizar histórico de manutenção"/>
                     <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding PreflightText, Mode=OneWay}" Margin="0,8,8,0" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" AutomationProperties.Name="Resultado do preflight"/>
                     <ListBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Logs}" Margin="8,8,0,0" AutomationProperties.Name="Log de manutenção"/>
                 </Grid>
@@ -395,7 +394,7 @@
                 <TextBlock Text="{Binding ReadyStatus}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding TraceStatus}" Style="{DynamicResource Text.StatusBar}" Margin="24,0,0,0" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding PollingStatus}" Style="{DynamicResource Text.StatusBar}" Margin="24,0,0,0" TextTrimming="CharacterEllipsis"/>
-                <TextBlock DockPanel.Dock="Right" Text="Ctrl+1..9 navega | F5 atualiza | Esc cancela" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding KeyboardHelp}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
     </Grid>

@@ -112,7 +112,9 @@ public sealed class ShellViewModelTests
     [Fact]
     public async Task ConnectAsync_ShouldSetConnectedStateAndContext()
     {
-        var viewModel = CreateViewModel();
+        var metadataService = new FakeMetadataCatalogService();
+        var securityService = new FakeSecurityCatalogService();
+        var viewModel = CreateViewModel(metadataService: metadataService, securityService: securityService);
         viewModel.Database = "employee.fdb";
 
         await viewModel.ConnectAsync("masterkey");
@@ -123,6 +125,9 @@ public sealed class ShellViewModelTests
         await WaitUntilAsync(() => viewModel.TransactionsWorkspace.State == TransactionsWorkspaceState.Ready);
         viewModel.Dashboard.Health.Should().Be(DatabaseHealthStatus.Healthy);
         viewModel.Dashboard.Metrics.Should().Contain(metric => metric.Key == "transactions" && metric.Value == "1");
+        await WaitUntilAsync(() => metadataService.LoadCount > 0 && securityService.LoadCount > 0);
+        metadataService.LastPasswordLength.Should().BeGreaterThan(0);
+        securityService.LastPasswordLength.Should().BeGreaterThan(0);
     }
 
     [Fact]
@@ -208,6 +213,9 @@ public sealed class ShellViewModelTests
                 throw new InvalidOperationException("Falha simulada");
             }
 
+            request.Password?.CopyBytes().Should().NotBeEmpty();
+            request.Password?.Dispose();
+
             return Task.FromResult(new ConnectionContext(
                 request.Profile.Id,
                 request.Profile.Name,
@@ -240,6 +248,7 @@ public sealed class ShellViewModelTests
             PollingOptions options,
             CancellationToken cancellationToken)
         {
+            password?.CopyBytes().Should().NotBeEmpty();
             Status = new MonitoringSessionStatus(PollingState.Connected, "Connected", DateTimeOffset.UtcNow);
             return Task.FromResult(new MonitoringSession(Guid.NewGuid(), connection, options, DateTimeOffset.UtcNow));
         }
@@ -381,10 +390,12 @@ public sealed class ShellViewModelTests
     {
         private MetadataCatalog? catalog;
         public int LoadCount { get; private set; }
+        public int LastPasswordLength { get; private set; }
 
         public Task<MetadataCatalog> LoadCatalogAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
         {
             LoadCount++;
+            LastPasswordLength = password?.CopyBytes().Length ?? 0;
             catalog = new MetadataCatalog(
                 [new MetadataObjectSummary(new MetadataObjectReference(MetadataObjectKind.Table, "CUSTOMERS"), "CUSTOMERS")],
                 DateTimeOffset.UtcNow,
@@ -444,10 +455,12 @@ public sealed class ShellViewModelTests
     {
         private SecurityCatalog? catalog;
         public int LoadCount { get; private set; }
+        public int LastPasswordLength { get; private set; }
 
         public Task<SecurityCatalog> LoadCatalogAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
         {
             LoadCount++;
+            LastPasswordLength = password?.CopyBytes().Length ?? 0;
             catalog = new SecurityCatalog(
                 [new SecurityUser("SYSDBA", "SEC$USERS", true)],
                 [new SecurityRole("RDB$ADMIN", "SYSDBA")],

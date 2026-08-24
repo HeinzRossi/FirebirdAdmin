@@ -9,4 +9,10 @@
     <SolidColorBrush x:Key="Brush.Border.Subtle" Color="{DynamicResource Color.Neutral.100}"/>
     <SolidColorBrush x:Key="Brush.Text.Muted" Color="{DynamicResource Color.Neutral.500}"/>
     <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource Color.Accent.600}"/>
+    <SolidColorBrush x:Key="Brush.Accent.Strong" Color="{DynamicResource Color.Accent.700}"/>
+    <SolidColorBrush x:Key="Brush.Focus" Color="{DynamicResource Color.Focus.500}"/>
+    <SolidColorBrush x:Key="Brush.Status.Success" Color="{DynamicResource Color.Success.600}"/>
+    <SolidColorBrush x:Key="Brush.Status.Warning" Color="{DynamicResource Color.Warning.600}"/>
+    <SolidColorBrush x:Key="Brush.Status.Error" Color="{DynamicResource Color.Error.600}"/>
+    <SolidColorBrush x:Key="Brush.Status.Info" Color="{DynamicResource Color.Info.600}"/>
 </ResourceDictionary>
