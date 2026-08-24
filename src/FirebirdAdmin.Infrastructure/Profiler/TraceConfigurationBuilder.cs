@@ -12,15 +12,15 @@ public sealed class TraceConfigurationBuilder : ITraceConfigurationBuilder
         var thresholdText = ((long)threshold).ToString(CultureInfo.InvariantCulture);
 
         return serverVersion.Major <= 2
-            ? BuildLegacy(thresholdText)
+            ? BuildLegacy(GetLegacyDatabaseTarget(options.Connection.Database), thresholdText)
             : BuildModern(options.Connection.Database, thresholdText);
     }
 
-    private static string BuildLegacy(string threshold)
+    private static string BuildLegacy(string databaseTarget, string threshold)
     {
         return string.Join(
             Environment.NewLine,
-            "<database>",
+            $"<database {databaseTarget}>",
             "  enabled true",
             "  log_statement_start true",
             "  log_statement_finish true",
@@ -29,6 +29,24 @@ public sealed class TraceConfigurationBuilder : ITraceConfigurationBuilder
             $"  time_threshold {threshold}",
             "</database>",
             string.Empty);
+    }
+
+    private static string GetLegacyDatabaseTarget(string database)
+    {
+        if (string.IsNullOrWhiteSpace(database))
+        {
+            return "*";
+        }
+
+        var normalized = database.Trim();
+        if (!normalized.Contains('\\') && !normalized.Contains('/'))
+        {
+            return normalized;
+        }
+
+        normalized = normalized.Replace('/', Path.DirectorySeparatorChar);
+        var fileName = Path.GetFileName(normalized);
+        return string.IsNullOrWhiteSpace(fileName) ? "*" : fileName;
     }
 
     private static string BuildModern(string database, string threshold)

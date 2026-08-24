@@ -14,8 +14,7 @@ public sealed class TraceConfigurationBuilderTests
 
         var config = builder.Build(CreateOptions("2.5.9"), FirebirdServerVersion.Parse("2.5.9"));
 
-        config.Should().Contain("<database>");
-        config.Should().NotContain("employee.fdb");
+        config.Should().Contain("<database employee.fdb>");
         config.Should().Contain("enabled true");
         config.Should().Contain("log_statement_finish true");
         config.Should().Contain("</database>");
@@ -41,9 +40,22 @@ public sealed class TraceConfigurationBuilderTests
 
         var config = builder.Build(options, FirebirdServerVersion.Parse("2.5.9"));
 
-        config.Should().Contain("<database>");
+        config.Should().Contain("<database RICS.GDB>");
         config.Should().Contain("</database>");
         config.Should().NotContain(@"E:\DESENVOLVIMENTOGIT");
+        config.Split(Environment.NewLine)[0].Should().NotContain(@"\");
+        config.Split(Environment.NewLine)[0].Should().NotContain("/");
+    }
+
+    [Fact]
+    public void Build_ShouldUseAliasAsLegacyDatabaseTargetForFirebird25()
+    {
+        var builder = new TraceConfigurationBuilder();
+        var options = CreateOptions("2.5.9", "employee");
+
+        var config = builder.Build(options, FirebirdServerVersion.Parse("2.5.9"));
+
+        config.Should().Contain("<database employee>");
     }
 
     private static ProfilerOptions CreateOptions(string version, string database = "employee.fdb")
