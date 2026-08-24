@@ -12,6 +12,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<StatementExecutionEntity> StatementExecutions => Set<StatementExecutionEntity>();
     public DbSet<PerformanceSnapshotEntity> PerformanceSnapshots => Set<PerformanceSnapshotEntity>();
     public DbSet<HistoryRetentionPolicyEntity> HistoryRetentionPolicies => Set<HistoryRetentionPolicyEntity>();
+    public DbSet<AlertEventEntity> AlertEvents => Set<AlertEventEntity>();
+    public DbSet<AlertNotificationEntity> AlertNotifications => Set<AlertNotificationEntity>();
+    public DbSet<MaintenanceOperationEntity> MaintenanceOperations => Set<MaintenanceOperationEntity>();
+    public DbSet<MaintenanceOperationLogEntity> MaintenanceOperationLogs => Set<MaintenanceOperationLogEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,5 +43,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         modelBuilder.Entity<StatementExecutionEntity>().HasKey(entity => entity.Id);
         modelBuilder.Entity<PerformanceSnapshotEntity>().HasKey(entity => entity.Id);
         modelBuilder.Entity<HistoryRetentionPolicyEntity>().HasKey(entity => entity.Id);
+        modelBuilder.Entity<AlertEventEntity>().HasKey(entity => entity.Id);
+        modelBuilder.Entity<AlertEventEntity>().HasIndex(entity => entity.CorrelationKey).IsUnique();
+        modelBuilder.Entity<AlertEventEntity>().HasIndex(entity => entity.Status);
+        modelBuilder.Entity<AlertEventEntity>().HasIndex(entity => entity.Severity);
+        modelBuilder.Entity<AlertEventEntity>().HasIndex(entity => entity.LastSeen);
+        modelBuilder.Entity<AlertNotificationEntity>().HasKey(entity => entity.Id);
+        modelBuilder.Entity<AlertNotificationEntity>().HasIndex(entity => entity.AlertId);
+        modelBuilder.Entity<MaintenanceOperationEntity>().HasKey(entity => entity.Id);
+        modelBuilder.Entity<MaintenanceOperationEntity>().HasIndex(entity => entity.StartedAt);
+        modelBuilder.Entity<MaintenanceOperationEntity>().HasIndex(entity => entity.Status);
+        modelBuilder.Entity<MaintenanceOperationLogEntity>().HasKey(entity => entity.Id);
+        modelBuilder.Entity<MaintenanceOperationLogEntity>().HasIndex(entity => entity.OperationId);
     }
 }
