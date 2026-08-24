@@ -38,7 +38,7 @@ public sealed class FirebirdSecurityQueryStrategy : ISecurityQueryStrategy
         catch (Exception ex)
         {
             warnings.Add($"SEC$USERS indisponível; usuários inferidos de grants. {ex.Message}");
-            users = InferUsers(grants);
+            users = InferUsersFromGrants(grants);
         }
 
         return new SecurityCatalog(users, roles, grants, DateTimeOffset.UtcNow, SecurityCacheState.Fresh, string.Join(Environment.NewLine, warnings.Where(item => item.Length > 0)));
@@ -140,7 +140,7 @@ public sealed class FirebirdSecurityQueryStrategy : ISecurityQueryStrategy
         return grants;
     }
 
-    private static IReadOnlyList<SecurityUser> InferUsers(IReadOnlyList<SecurityGrant> grants)
+    public static IReadOnlyList<SecurityUser> InferUsersFromGrants(IReadOnlyList<SecurityGrant> grants)
     {
         return grants
             .Where(grant => string.Equals(grant.Principal.Type, "User", StringComparison.OrdinalIgnoreCase))
