@@ -96,6 +96,9 @@
   <data name="PasswordRequired" xml:space="preserve">
     <value>Informe a senha para conectar.</value>
   </data>
+  <data name="PasswordForgottenForProfile" xml:space="preserve">
+    <value>Senha salva removida deste perfil.</value>
+  </data>
   <data name="PollingStopped" xml:space="preserve">
     <value>Polling parado</value>
   </data>

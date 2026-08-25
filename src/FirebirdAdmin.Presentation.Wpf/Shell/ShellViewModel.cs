@@ -32,6 +32,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private IReadOnlyList<ConnectionProfile> connectionProfiles = [];
     private CancellationTokenSource? monitoringReadCts;
     private byte[]? activeSessionCredentialBytes;
+    private bool isApplyingProfile;
 
     [ObservableProperty]
     private string profileName = "Local";
@@ -271,6 +272,14 @@ public sealed partial class ShellViewModel : ObservableObject
         UpdatePasswordStatusFromProfileName();
     }
 
+    partial void OnRememberPasswordChanged(bool value)
+    {
+        if (!value && !isApplyingProfile)
+        {
+            _ = ForgetSavedPasswordForCurrentProfileAsync();
+        }
+    }
+
     partial void OnHasSavedPasswordForProfileChanged(bool value)
     {
         OnPropertyChanged(nameof(PasswordStatusText));
@@ -460,8 +469,8 @@ public sealed partial class ShellViewModel : ObservableObject
 
             if (setActiveConnection)
             {
-                HasSavedPasswordForProfile = profile.HasSavedPassword;
-                RememberPassword = profile.HasSavedPassword || RememberPassword;
+                HasSavedPasswordForProfile = shouldPersistRememberedPassword || (RememberPassword && profile.HasSavedPassword);
+                RememberPassword = shouldPersistRememberedPassword;
                 connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
                 StoreActiveSessionCredential(credentialBytes);
                 ActiveConnection = context;
@@ -595,21 +604,51 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void ApplyProfile(ConnectionProfile profile)
     {
-        ProfileName = profile.Name;
-        Host = profile.Host;
-        Port = profile.Port;
-        Database = profile.Database;
-        UserName = profile.UserName;
-        Charset = profile.Charset;
-        Role = profile.Role;
-        RememberPassword = profile.HasSavedPassword;
-        HasSavedPasswordForProfile = profile.HasSavedPassword;
+        isApplyingProfile = true;
+        try
+        {
+            ProfileName = profile.Name;
+            Host = profile.Host;
+            Port = profile.Port;
+            Database = profile.Database;
+            UserName = profile.UserName;
+            Charset = profile.Charset;
+            Role = profile.Role;
+            RememberPassword = profile.HasSavedPassword;
+            HasSavedPasswordForProfile = profile.HasSavedPassword;
+        }
+        finally
+        {
+            isApplyingProfile = false;
+        }
     }
 
     private void UpdatePasswordStatusFromProfileName()
     {
         var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase));
         HasSavedPasswordForProfile = profile?.HasSavedPassword == true;
+    }
+
+    private async Task ForgetSavedPasswordForCurrentProfileAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var profile = await FindProfileByNameAsync(ProfileName, cancellationToken);
+            if (profile?.HasSavedPassword != true)
+            {
+                HasSavedPasswordForProfile = false;
+                return;
+            }
+
+            await credentialStore.DeleteAsync(profile.Id, cancellationToken);
+            connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
+            HasSavedPasswordForProfile = false;
+            OperationMessage = AppStrings.PasswordForgottenForProfile;
+        }
+        catch (Exception ex)
+        {
+            OperationMessage = ex.Message;
+        }
     }
 
     private static CredentialSecret? CreateSecretCopy(byte[]? bytes)

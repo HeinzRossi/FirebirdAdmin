@@ -73,6 +73,17 @@ public sealed class RealRememberPasswordIntegrationTests
 
             context.ServerVersion.Major.Should().BeGreaterThan(0);
             context.Database.Should().Be(environment.Database);
+
+            await reopenedCredentialStore.DeleteAsync(reopenedProfile.Id, CancellationToken.None);
+
+            var afterForgetFactory = new TestDbContextFactory(databasePath);
+            var afterForgetCredentialStore = new DpapiCredentialStore(afterForgetFactory);
+            var afterForgetProfileService = new ConnectionProfileService(afterForgetFactory, afterForgetCredentialStore);
+            var forgottenProfile = (await afterForgetProfileService.ListAsync(CancellationToken.None))
+                .Single(profile => profile.Name == "RealRememberPassword");
+
+            forgottenProfile.HasSavedPassword.Should().BeFalse();
+            (await afterForgetCredentialStore.TryLoadAsync(forgottenProfile.Id, CancellationToken.None)).Should().BeNull();
         }
         finally
         {

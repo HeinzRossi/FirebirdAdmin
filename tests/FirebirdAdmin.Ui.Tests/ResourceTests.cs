@@ -18,6 +18,7 @@ public sealed class ResourceTests
         AppStrings.PasswordNotSavedForProfile.Should().Contain("não salva");
         AppStrings.PasswordUnavailable.Should().Contain("senha");
         AppStrings.PasswordRequired.Should().Be("Informe a senha para conectar.");
+        AppStrings.PasswordForgottenForProfile.Should().Contain("removida");
         AppStrings.DashboardOperationalTitle.Should().Be("Dashboard operacional");
         AppStrings.TransactionsTitle.Should().NotBeNullOrWhiteSpace();
         AppStrings.Start.Should().Be("Iniciar");

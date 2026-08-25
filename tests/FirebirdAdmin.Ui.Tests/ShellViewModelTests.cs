@@ -169,13 +169,12 @@ public sealed class ShellViewModelTests
             profilerSessionService: profilerService);
 
         await viewModel.LoadInitialProfileAsync();
-        viewModel.RememberPassword = false;
         await viewModel.ConnectAsync("masterkey");
         viewModel.ClearSessionCredentialForShutdown();
         await viewModel.StartProfilerAsync(string.Empty);
 
         profilerService.StartCount.Should().Be(1);
-        profilerService.LastPasswordLength.Should().Be("saved-secret".Length);
+        profilerService.LastPasswordLength.Should().Be("masterkey".Length);
     }
 
     [Fact]
@@ -337,9 +336,43 @@ public sealed class ShellViewModelTests
         viewModel.RememberPassword = false;
         await viewModel.SaveProfileAsync(string.Empty);
 
-        credentialStore.DeleteCount.Should().Be(1);
+        credentialStore.DeleteCount.Should().BeGreaterThanOrEqualTo(1);
         viewModel.HasSavedPasswordForProfile.Should().BeFalse();
         viewModel.RememberPassword.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RememberPasswordUnchecked_ShouldForgetSavedPasswordAndStayUncheckedAfterConnect()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Local",
+            "localhost",
+            3050,
+            "employee.fdb",
+            "SYSDBA",
+            "UTF8",
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var profileService = new FakeConnectionProfileService(profile);
+        var credentialStore = new FakeCredentialStore("saved-secret", profileService.MarkPasswordDeleted);
+        var viewModel = CreateViewModel(
+            connectionProfileService: profileService,
+            credentialStore: credentialStore);
+
+        await viewModel.LoadInitialProfileAsync();
+
+        viewModel.RememberPassword = false;
+        await WaitUntilAsync(() => credentialStore.DeleteCount == 1);
+        await viewModel.ConnectAsync("masterkey");
+
+        credentialStore.DeleteCount.Should().Be(1);
+        credentialStore.SaveCount.Should().Be(0);
+        viewModel.RememberPassword.Should().BeFalse();
+        viewModel.HasSavedPasswordForProfile.Should().BeFalse();
+        viewModel.PasswordStatusText.Should().Be(AppStrings.PasswordNotSavedForProfile);
     }
 
     [Fact]
