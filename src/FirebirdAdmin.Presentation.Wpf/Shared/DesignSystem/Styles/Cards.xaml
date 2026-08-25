@@ -38,6 +38,8 @@
     <Style x:Key="TabContent.Root" TargetType="Grid">
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
         <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
     </Style>
 
@@ -86,8 +88,8 @@
         <Setter Property="Background" Value="{DynamicResource Brush.Surface.Toolbar}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
         <Setter Property="FocusVisualStyle">
             <Setter.Value>
                 <Style TargetType="Control">
@@ -115,8 +117,8 @@
                         <ContentPresenter x:Name="ContentSite"
                                           ContentSource="Header"
                                           RecognizesAccessKey="True"
-                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
                                           SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
                     </Border>
                     <ControlTemplate.Triggers>
