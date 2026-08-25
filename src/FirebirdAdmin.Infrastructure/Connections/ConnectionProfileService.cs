@@ -65,11 +65,6 @@ public sealed class ConnectionProfileService(
         entity.Role = NormalizeOptional(request.Role);
         entity.UpdatedAt = now;
 
-        if (!request.RememberPassword)
-        {
-            entity.ProtectedPasswordBlob = null;
-        }
-
         await dbContext.SaveChangesAsync(cancellationToken);
 
         if (request.RememberPassword && request.Password is not null)

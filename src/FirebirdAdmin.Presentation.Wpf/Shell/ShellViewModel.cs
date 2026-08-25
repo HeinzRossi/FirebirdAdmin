@@ -300,7 +300,12 @@ public sealed partial class ShellViewModel : ObservableObject
     public async Task SaveProfileAsync(string password, CancellationToken cancellationToken = default)
     {
         using var secret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-        await connectionProfileService.SaveAsync(CreateProfileRequest(secret), cancellationToken);
+        var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret), cancellationToken);
+        if (!RememberPassword)
+        {
+            await credentialStore.DeleteAsync(profile.Id, cancellationToken);
+        }
+
         await LoadInitialProfileAsync(cancellationToken);
         OperationMessage = "Perfil salvo.";
     }
@@ -399,28 +404,39 @@ public sealed partial class ShellViewModel : ObservableObject
         byte[]? credentialBytes = null;
         try
         {
-            var existingProfile = await FindProfileByNameAsync(ProfileName, cancellationToken);
-            var preserveSavedPassword = existingProfile?.HasSavedPassword == true && !RememberPassword;
             using var profileSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-            var secretToSave = RememberPassword ? profileSecret : null;
-            var profile = await connectionProfileService.SaveAsync(
-                CreateProfileRequest(secretToSave, rememberPasswordOverride: RememberPassword || preserveSavedPassword),
-                cancellationToken);
+            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret: null), cancellationToken);
             using var savedSecret = profileSecret is null ? await credentialStore.TryLoadAsync(profile.Id, cancellationToken) : null;
 
             credentialBytes = !string.IsNullOrEmpty(password)
                 ? Encoding.UTF8.GetBytes(password)
                 : savedSecret?.CopyBytes() ?? activeSessionCredentialBytes?.ToArray();
 
+            if (credentialBytes is null || credentialBytes.Length == 0)
+            {
+                ConnectionState = ShellConnectionState.ConnectionFailed;
+                OperationMessage = AppStrings.PasswordUnavailable;
+                return;
+            }
+
             using var connectionSecret = CreateSecretCopy(credentialBytes);
             var context = await firebirdConnectionService.ConnectAsync(
                 new ConnectionRequest(profile, connectionSecret),
                 cancellationToken);
 
+            var shouldPersistRememberedPassword = RememberPassword && (profileSecret is not null || savedSecret is null);
+            if (setActiveConnection && shouldPersistRememberedPassword)
+            {
+                using var rememberedSecret = CreateSecretCopy(credentialBytes);
+                await credentialStore.SaveAsync(profile.Id, rememberedSecret!, cancellationToken);
+                profile = (await connectionProfileService.GetAsync(profile.Id, cancellationToken) ?? profile) with { HasSavedPassword = true };
+            }
+
             if (setActiveConnection)
             {
                 HasSavedPasswordForProfile = profile.HasSavedPassword;
                 RememberPassword = profile.HasSavedPassword || RememberPassword;
+                connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
                 StoreActiveSessionCredential(credentialBytes);
                 ActiveConnection = context;
                 ProfilerWorkspace.SetReady();

@@ -80,7 +80,7 @@ public sealed class ConnectionProfileServiceTests
     }
 
     [Fact]
-    public async Task SaveAsync_ShouldClearSavedPasswordWhenUpdatingExistingProfileWithoutRememberPassword()
+    public async Task SaveAsync_ShouldPreserveSavedPasswordWhenUpdatingExistingProfileWithoutRememberPassword()
     {
         using var fixture = TempDatabaseFixture.Create();
         var factory = new InfrastructureTestDbContextFactory(fixture.DatabasePath);
@@ -95,11 +95,31 @@ public sealed class ConnectionProfileServiceTests
         var second = await service.SaveAsync(CreateRequest(transientPassword, rememberPassword: false), CancellationToken.None);
 
         second.Id.Should().Be(first.Id);
-        second.HasSavedPassword.Should().BeFalse();
+        second.HasSavedPassword.Should().BeTrue();
 
         await using var dbContext = factory.CreateDbContext();
         var entity = dbContext.ConnectionProfiles.Single();
-        entity.ProtectedPasswordBlob.Should().BeNull();
+        entity.ProtectedPasswordBlob.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task CredentialStoreDeleteAsync_ShouldClearSavedPasswordExplicitly()
+    {
+        using var fixture = TempDatabaseFixture.Create();
+        var factory = new InfrastructureTestDbContextFactory(fixture.DatabasePath);
+        var credentialStore = new DpapiCredentialStore(factory);
+        var service = new ConnectionProfileService(factory, credentialStore);
+
+        using var savedPassword = CredentialSecret.FromPlainText("masterkey");
+        var first = await service.SaveAsync(CreateRequest(savedPassword, rememberPassword: true), CancellationToken.None);
+        first.HasSavedPassword.Should().BeTrue();
+
+        await credentialStore.DeleteAsync(first.Id, CancellationToken.None);
+
+        var second = await service.GetAsync(first.Id, CancellationToken.None);
+        second.Should().NotBeNull();
+        second!.HasSavedPassword.Should().BeFalse();
+        (await credentialStore.TryLoadAsync(first.Id, CancellationToken.None)).Should().BeNull();
     }
 
     [Fact]

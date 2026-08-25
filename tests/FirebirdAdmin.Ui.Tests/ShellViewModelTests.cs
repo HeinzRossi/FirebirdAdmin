@@ -223,9 +223,10 @@ public sealed class ShellViewModelTests
             DateTimeOffset.UtcNow);
         var profileService = new FakeConnectionProfileService(profile);
         var connectionService = new FakeFirebirdConnectionService(false);
+        var credentialStore = new FakeCredentialStore("saved-secret");
         var viewModel = CreateViewModel(
             connectionProfileService: profileService,
-            credentialStore: new FakeCredentialStore("saved-secret"),
+            credentialStore: credentialStore,
             firebirdConnectionService: connectionService);
 
         await viewModel.LoadInitialProfileAsync();
@@ -235,7 +236,81 @@ public sealed class ShellViewModelTests
         profileService.LastRequest.Should().NotBeNull();
         profileService.LastRequest!.RememberPassword.Should().BeTrue();
         profileService.LastRequest.Password.Should().BeNull();
+        credentialStore.SaveCount.Should().Be(0);
+        credentialStore.DeleteCount.Should().Be(0);
         viewModel.HasSavedPasswordForProfile.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldSaveTypedPasswordAfterSuccessfulConnection_WhenRememberPasswordIsChecked()
+    {
+        var credentialStore = new FakeCredentialStore();
+        var viewModel = CreateViewModel(credentialStore: credentialStore);
+        viewModel.RememberPassword = true;
+
+        await viewModel.ConnectAsync("masterkey");
+
+        credentialStore.SaveCount.Should().Be(1);
+        credentialStore.SavedPasswordLength.Should().Be("masterkey".Length);
+        viewModel.HasSavedPasswordForProfile.Should().BeTrue();
+        viewModel.RememberPassword.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldNotSaveOrDeletePassword_WhenRememberPasswordIsUnchecked()
+    {
+        var credentialStore = new FakeCredentialStore();
+        var viewModel = CreateViewModel(credentialStore: credentialStore);
+        viewModel.RememberPassword = false;
+
+        await viewModel.ConnectAsync("masterkey");
+
+        credentialStore.SaveCount.Should().Be(0);
+        credentialStore.DeleteCount.Should().Be(0);
+        viewModel.HasSavedPasswordForProfile.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldNotTryConnection_WhenNoPasswordIsAvailable()
+    {
+        var connectionService = new FakeFirebirdConnectionService(false);
+        var viewModel = CreateViewModel(firebirdConnectionService: connectionService);
+
+        await viewModel.ConnectAsync(string.Empty);
+
+        connectionService.ConnectionCount.Should().Be(0);
+        viewModel.ConnectionState.Should().Be(ShellConnectionState.ConnectionFailed);
+        viewModel.OperationMessage.Should().Be(AppStrings.PasswordUnavailable);
+    }
+
+    [Fact]
+    public async Task SaveProfileAsync_ShouldDeleteSavedPasswordOnlyWhenExplicitlySavingUnchecked()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Local",
+            "localhost",
+            3050,
+            "employee.fdb",
+            "SYSDBA",
+            "UTF8",
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var profileService = new FakeConnectionProfileService(profile);
+        var credentialStore = new FakeCredentialStore("saved-secret", profileService.MarkPasswordDeleted);
+        var viewModel = CreateViewModel(
+            connectionProfileService: profileService,
+            credentialStore: credentialStore);
+
+        await viewModel.LoadInitialProfileAsync();
+        viewModel.RememberPassword = false;
+        await viewModel.SaveProfileAsync(string.Empty);
+
+        credentialStore.DeleteCount.Should().Be(1);
+        viewModel.HasSavedPasswordForProfile.Should().BeFalse();
+        viewModel.RememberPassword.Should().BeFalse();
     }
 
     [Fact]
@@ -359,7 +434,7 @@ public sealed class ShellViewModelTests
         {
             LastRequest = request;
             var existing = profiles.SingleOrDefault(profile => profile.Name.Equals(request.Name, StringComparison.OrdinalIgnoreCase));
-            var hasSavedPassword = request.RememberPassword && (request.Password is not null || existing?.HasSavedPassword == true);
+            var hasSavedPassword = request.Password is not null || existing?.HasSavedPassword == true;
             var profile = new ConnectionProfile(
                 existing?.Id ?? request.Id ?? Guid.NewGuid(),
                 request.Name,
@@ -383,6 +458,18 @@ public sealed class ShellViewModelTests
         }
 
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public void MarkPasswordDeleted(Guid id)
+        {
+            var existing = profiles.SingleOrDefault(profile => profile.Id == id);
+            if (existing is null)
+            {
+                return;
+            }
+
+            profiles.Remove(existing);
+            profiles.Add(existing with { HasSavedPassword = false, UpdatedAt = DateTimeOffset.UtcNow });
+        }
     }
 
     private sealed class FakeThemeService : IThemeService
@@ -401,9 +488,22 @@ public sealed class ShellViewModelTests
         }
     }
 
-    private sealed class FakeCredentialStore(string? savedPassword = null) : ICredentialStore
+    private sealed class FakeCredentialStore(string? savedPassword = null, Action<Guid>? onDelete = null) : ICredentialStore
     {
-        public Task SaveAsync(Guid profileId, CredentialSecret secret, CancellationToken cancellationToken) => Task.CompletedTask;
+        public int SaveCount { get; private set; }
+        public int DeleteCount { get; private set; }
+        public int SavedPasswordLength { get; private set; }
+
+        public Task SaveAsync(Guid profileId, CredentialSecret secret, CancellationToken cancellationToken)
+        {
+            SaveCount++;
+            var bytes = secret.CopyBytes();
+            SavedPasswordLength = bytes.Length;
+            savedPassword = System.Text.Encoding.UTF8.GetString(bytes);
+            Array.Clear(bytes);
+            return Task.CompletedTask;
+        }
+
         public Task<CredentialSecret?> TryLoadAsync(Guid profileId, CancellationToken cancellationToken)
         {
             return Task.FromResult(string.IsNullOrEmpty(savedPassword)
@@ -411,7 +511,13 @@ public sealed class ShellViewModelTests
                 : CredentialSecret.FromPlainText(savedPassword));
         }
 
-        public Task DeleteAsync(Guid profileId, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task DeleteAsync(Guid profileId, CancellationToken cancellationToken)
+        {
+            DeleteCount++;
+            savedPassword = null;
+            onDelete?.Invoke(profileId);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeFirebirdConnectionService(bool shouldFail) : IFirebirdConnectionService
