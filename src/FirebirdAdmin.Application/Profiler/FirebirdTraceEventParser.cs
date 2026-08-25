@@ -127,17 +127,49 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
         for (var index = startIndex; index < lines.Length; index++)
         {
             var candidate = lines[index];
-            if (candidate.Contains("select", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("insert", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("update", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("delete", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("execute", StringComparison.OrdinalIgnoreCase))
+            if (!IsSqlStart(candidate))
             {
-                return candidate;
+                continue;
             }
+
+            var sqlLines = new List<string> { candidate };
+            for (var sqlIndex = index + 1; sqlIndex < lines.Length; sqlIndex++)
+            {
+                var sqlLine = lines[sqlIndex];
+                if (IsTraceSqlTerminator(sqlLine))
+                {
+                    break;
+                }
+
+                sqlLines.Add(sqlLine);
+            }
+
+            return string.Join(Environment.NewLine, sqlLines).Trim();
         }
 
         return string.Empty;
+    }
+
+    private static bool IsSqlStart(string line)
+    {
+        return line.StartsWith("select", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("insert", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("update", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("delete", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("execute", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("with", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("merge", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTraceSqlTerminator(string line)
+    {
+        return line.Length > 0 && line.All(character => character == '^') ||
+               line.StartsWith("plan", StringComparison.OrdinalIgnoreCase) ||
+               line.Contains("record", StringComparison.OrdinalIgnoreCase) && line.Contains("fetched", StringComparison.OrdinalIgnoreCase) ||
+               line.Contains("ms,", StringComparison.OrdinalIgnoreCase) && line.Contains("fetch", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("table", StringComparison.OrdinalIgnoreCase) && line.Contains("natural", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("TRACE_", StringComparison.OrdinalIgnoreCase) ||
+               line.Contains("EXECUTE_STATEMENT_", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ExtractPlan(string block)

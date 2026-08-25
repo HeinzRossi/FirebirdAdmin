@@ -217,9 +217,15 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
             Func<string, CancellationToken, Task> onErrorLine,
             CancellationToken cancellationToken)
         {
-            AttemptCount++;
             Request = request;
             var arguments = request.Arguments.ToArray();
+            var isStart = arguments.Contains("-start");
+            if (!isStart)
+            {
+                return exitCode;
+            }
+
+            AttemptCount++;
             var configIndex = Array.IndexOf(arguments, "-config");
             if (configIndex >= 0)
             {

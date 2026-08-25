@@ -73,4 +73,39 @@ public sealed class ProfilerParserTests
         events[0].Type.Should().Be(TraceEventType.StatementFinished);
         events[0].Sql.Should().Be("select current_timestamp from rdb$database");
     }
+
+    [Fact]
+    public void ParseBlock_ShouldExtractCompleteFirebird25MultilineSql()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_START
+                             C:\DELPHI\COMPACTADOR\2019-05-29\RC.GDB (ATT_50014, SYSDBA:NONE, UTF8, TCPv4:127.0.0.1/62518)
+                             	(TRA_90013, READ_COMMITTED | REC_VERSION | NOWAIT | READ_WRITE)
+                             
+                             Statement 34:
+                             -------------------------------------------------------------------------------
+                             select
+                                 rdb$relation_id,
+                                 rdb$relation_name
+                             from rdb$relations
+                             where rdb$system_flag = 0
+                             order by rdb$relation_name
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             PLAN (RDB$RELATIONS NATURAL)
+                             """;
+
+        var events = parser.ParseBlock(block, 30, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].Type.Should().Be(TraceEventType.StatementStarted);
+        events[0].Sql.Should().Be(string.Join(
+            Environment.NewLine,
+            "select",
+            "rdb$relation_id,",
+            "rdb$relation_name",
+            "from rdb$relations",
+            "where rdb$system_flag = 0",
+            "order by rdb$relation_name"));
+    }
 }
