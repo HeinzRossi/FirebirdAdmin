@@ -198,6 +198,53 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         profilerEvent.ClientProcessPath.Should().Be(@"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe");
     }
 
+    [Theory]
+    [InlineData("Trace session ID 43 started")]
+    [InlineData("2026-08-25T06:40:44.8420 (30128:000000000287FBC0) TRACE_INIT\r\n\tSESSION_43 FirebirdAdmin-20260825-093818")]
+    [InlineData("2026-08-25T06:40:44.8420 (30128:000000000287FBC0) TRACE_FINI\r\n\tSESSION_43 FirebirdAdmin-20260825-093818")]
+    public async Task StartAsync_ShouldSuppressInternalTraceLifecycleEvents(string lifecycleBlock)
+    {
+        var runner = new FakeTraceProcessRunner(emitStatement: false, lifecycleBlocks: [lifecycleBlock]);
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(sessionName: "FirebirdAdmin-20260825-093818"), secret, CancellationToken.None);
+
+        await FluentActions.Invoking(() => ReadOneAsync(service, TimeSpan.FromMilliseconds(250)))
+            .Should()
+            .ThrowAsync<OperationCanceledException>();
+
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldKeepExternalTraceLifecycleEvents()
+    {
+        var runner = new FakeTraceProcessRunner(
+            emitStatement: false,
+            lifecycleBlocks:
+            [
+                "2026-08-25T06:40:44.8420 (30128:000000000287FBC0) TRACE_FINI\r\n\tSESSION_43 ExternalTrace"
+            ]);
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(sessionName: "ExternalTrace"), secret, CancellationToken.None);
+        var profilerEvent = await ReadOneAsync(service);
+        await service.StopAsync(CancellationToken.None);
+
+        profilerEvent.Type.Should().Be(TraceEventType.Unparsed);
+        profilerEvent.RawTrace.Should().Contain("TRACE_FINI");
+    }
+
     private static async Task<ProfilerEvent> ReadOneAsync(IProfilerSessionService service, TimeSpan? timeoutInterval = null)
     {
         using var timeout = new CancellationTokenSource(timeoutInterval ?? TimeSpan.FromSeconds(2));
@@ -226,7 +273,8 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
     private static ProfilerOptions CreateOptions(
         string serverVersion = "5.0.0",
         string? traceManagerVersion = null,
-        string database = "employee.fdb")
+        string database = "employee.fdb",
+        string sessionName = "test")
     {
         var toolset = new EffectiveToolset(
         [
@@ -245,7 +293,7 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
             toolset,
             DateTimeOffset.UtcNow);
 
-        return new ProfilerOptions(context, "test");
+        return new ProfilerOptions(context, sessionName);
     }
 
     private sealed class FakeTraceProcessRunner(
@@ -255,7 +303,8 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         bool parseErrorOnSecondAttempt = false,
         bool emitStartupLineBeforeParse = false,
         TimeSpan? parseErrorDelay = null,
-        string clientProcessPath = @"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe") : ITraceProcessRunner
+        string clientProcessPath = @"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe",
+        IReadOnlyList<string>? lifecycleBlocks = null) : ITraceProcessRunner
     {
         public TraceProcessRequest? Request { get; private set; }
         public string? FetchPath { get; private set; }
@@ -290,6 +339,19 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
             FetchPath = fetchIndex >= 0 ? arguments[fetchIndex + 1] : null;
             FetchFileExistedDuringRun = FetchPath is not null && File.Exists(FetchPath);
             FetchFileContentDuringRun = FetchPath is null ? null : await File.ReadAllTextAsync(FetchPath, cancellationToken);
+
+            if (lifecycleBlocks is not null)
+            {
+                foreach (var lifecycleBlock in lifecycleBlocks)
+                {
+                    foreach (var line in lifecycleBlock.Split(["\r\n", "\n"], StringSplitOptions.None))
+                    {
+                        await onOutputLine(line, cancellationToken);
+                    }
+
+                    await onOutputLine(string.Empty, cancellationToken);
+                }
+            }
 
             if ((AttemptCount == 1 && parseErrorOnFirstAttempt) || (AttemptCount == 2 && parseErrorOnSecondAttempt))
             {

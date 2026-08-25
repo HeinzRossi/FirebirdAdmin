@@ -560,7 +560,7 @@ public sealed class FbTraceManagerProfilerSessionService(
         var sequence = Interlocked.Read(ref nextSequence);
         foreach (var profilerEvent in traceEventParser.ParseBlock(text, sequence, DateTimeOffset.UtcNow))
         {
-            if (ShouldSuppressOwnStatement(profilerEvent))
+            if (ShouldSuppressProfilerEvent(profilerEvent))
             {
                 continue;
             }
@@ -568,6 +568,12 @@ public sealed class FbTraceManagerProfilerSessionService(
             Interlocked.Exchange(ref nextSequence, profilerEvent.Sequence + 1);
             await channel.Writer.WriteAsync(profilerEvent, cancellationToken);
         }
+    }
+
+    private bool ShouldSuppressProfilerEvent(ProfilerEvent profilerEvent)
+    {
+        return ShouldSuppressOwnStatement(profilerEvent) ||
+               ShouldSuppressInternalTraceLifecycle(profilerEvent, activeSessionName);
     }
 
     private static bool ShouldSuppressOwnStatement(ProfilerEvent profilerEvent)
@@ -586,6 +592,31 @@ public sealed class FbTraceManagerProfilerSessionService(
         return fileName.StartsWith("FirebirdAdmin.", StringComparison.OrdinalIgnoreCase) ||
                fileName.Equals("FirebirdAdmin", StringComparison.OrdinalIgnoreCase) ||
                fileName.Equals("testhost", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool ShouldSuppressInternalTraceLifecycle(ProfilerEvent profilerEvent, string? sessionName)
+    {
+        if (profilerEvent.Type is not TraceEventType.Unparsed)
+        {
+            return false;
+        }
+
+        var rawTrace = profilerEvent.RawTrace;
+        if (rawTrace.StartsWith("Trace session ID ", StringComparison.OrdinalIgnoreCase) &&
+            rawTrace.Contains(" started", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(sessionName) ||
+            !sessionName.StartsWith("FirebirdAdmin-", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return (rawTrace.Contains("TRACE_INIT", StringComparison.OrdinalIgnoreCase) ||
+                rawTrace.Contains("TRACE_FINI", StringComparison.OrdinalIgnoreCase)) &&
+               rawTrace.Contains(sessionName, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task PublishTechnicalAsync(string line, CancellationToken cancellationToken)
