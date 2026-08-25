@@ -7,6 +7,13 @@ public sealed class SqliteConnectionFactory(ApplicationDataPaths paths)
 {
     public SqliteConnection Create()
     {
-        return new SqliteConnection($"Data Source={paths.DatabasePath};Pooling=False");
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = paths.DatabasePath,
+            Pooling = false,
+            Mode = SqliteOpenMode.ReadWriteCreate
+        }.ToString();
+
+        return new SqliteConnection(connectionString);
     }
 }

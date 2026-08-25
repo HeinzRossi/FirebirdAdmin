@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.History;
+using FirebirdAdmin.Presentation.Wpf.Diagnostics;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.History;
 
@@ -18,7 +20,7 @@ public sealed partial class HistoryWorkspaceViewModel(
     private string userName = string.Empty;
 
     [ObservableProperty]
-    private string dataKind = "Trace";
+    private string dataKind = HistoryDataKind.TraceEvents.ToString();
 
     [ObservableProperty]
     private int page = 1;
@@ -30,6 +32,12 @@ public sealed partial class HistoryWorkspaceViewModel(
     private HistoryRowViewModel? selectedRow;
 
     public ObservableCollection<HistoryRowViewModel> Rows { get; } = [];
+    public IReadOnlyList<FilterOption> DataKindOptions { get; } =
+    [
+        new(AppStrings.HistoryDataKindTraceEvents, HistoryDataKind.TraceEvents.ToString()),
+        new(AppStrings.HistoryDataKindMonitoringSnapshots, HistoryDataKind.MonitoringSnapshots.ToString())
+    ];
+
     public string SelectedDetails => SelectedRow?.Details ?? "-";
 
     public async Task SearchAsync(CancellationToken cancellationToken = default)
@@ -85,7 +93,7 @@ public sealed partial class HistoryWorkspaceViewModel(
     private HistoryQuery CreateQuery()
     {
         return new HistoryQuery(
-            Kind: string.Equals(DataKind, "Monitoring", StringComparison.OrdinalIgnoreCase)
+            Kind: string.Equals(DataKind, HistoryDataKind.MonitoringSnapshots.ToString(), StringComparison.OrdinalIgnoreCase)
                 ? HistoryDataKind.MonitoringSnapshots
                 : HistoryDataKind.TraceEvents,
             SqlText: string.IsNullOrWhiteSpace(SqlText) ? null : SqlText,

@@ -2,44 +2,95 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:scott="clr-namespace:ScottPlot.WPF;assembly=ScottPlot.WPF"
+        xmlns:res="clr-namespace:FirebirdAdmin.Presentation.Wpf.Resources"
         xmlns:shell="clr-namespace:FirebirdAdmin.Presentation.Wpf.Shell"
+        xmlns:winshell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="{Binding ApplicationName}"
+        Icon="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin.ico"
         Width="1180"
         Height="760"
+        WindowState="Normal"
+        WindowStyle="None"
+        ResizeMode="CanResize"
         MinWidth="820"
         MinHeight="640"
         Background="{DynamicResource Brush.App.Background}"
         Foreground="{DynamicResource Brush.App.Foreground}"
         FontFamily="{DynamicResource FontFamily.Base}"
+        SourceInitialized="Window_OnSourceInitialized"
+        StateChanged="Window_OnStateChanged"
         KeyDown="Window_OnKeyDown">
+    <winshell:WindowChrome.WindowChrome>
+        <winshell:WindowChrome CaptionHeight="40"
+                               ResizeBorderThickness="6"
+                               GlassFrameThickness="0"
+                               CornerRadius="0"
+                               UseAeroCaptionButtons="False"/>
+    </winshell:WindowChrome.WindowChrome>
     <Window.Resources>
-        <Style x:Key="WorkspaceRoot" TargetType="FrameworkElement">
-            <Setter Property="Margin" Value="{DynamicResource Spacing.Thickness.XL}"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+
+        <Style x:Key="Button.WindowChrome" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="MinHeight" Value="40"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="winshell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+        </Style>
+
+        <Style x:Key="Button.WindowClose" TargetType="Button" BasedOn="{StaticResource Button.WindowChrome}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Chrome" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Brush.Status.Error}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.OnAccent}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Chrome" Property="Opacity" Value="0.82"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <DataTemplate x:Key="DashboardWorkspaceTemplate">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                <Grid DataContext="{Binding Dashboard}" Style="{StaticResource WorkspaceRoot}">
+                <Grid DataContext="{Binding Dashboard}" Style="{DynamicResource Workspace.Root}">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="240"/>
                     </Grid.RowDefinitions>
-                    <DockPanel Grid.Row="0">
-                        <StackPanel>
-                            <TextBlock Text="{Binding DataContext.DashboardOperationalTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                            <TextBlock Text="{Binding HealthMessage}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    <Grid Grid.Row="0">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding DataContext.DashboardOperationalTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                            <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding HealthText}" TextTrimming="CharacterEllipsis"/></Border>
+                            <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding LastUpdatedText, StringFormat={x:Static res:AppStrings.LastUpdatedFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                         </StackPanel>
-                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                            <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding HealthText}"/></Border>
-                            <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding LastUpdatedText, StringFormat=Atualizado: {0}}"/></Border>
-                        </StackPanel>
-                    </DockPanel>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding HealthMessage}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                    </Grid>
                     <ItemsControl Grid.Row="1" ItemsSource="{Binding Metrics}" Margin="0,14,0,14">
                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="{DynamicResource Brush.Surface.Workspace}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}" Padding="12,10" Margin="0,0,8,8" MinWidth="150">
+                                <Border Style="{DynamicResource Card.Metric}">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Label}" Style="{DynamicResource Text.StatusBar}"/>
                                         <TextBlock Text="{Binding Value}" Style="{DynamicResource Text.NavigationItem}" Margin="0,4,0,0"/>
@@ -49,24 +100,26 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <scott:WpfPlot Grid.Row="2" Height="220" Loaded="ActivityPlot_OnLoaded" Unloaded="ActivityPlot_OnUnloaded" AutomationProperties.Name="Gráfico de atividade por snapshot"/>
+                    <Border Grid.Row="2" Style="{DynamicResource Panel.Detail}">
+                        <scott:WpfPlot Height="210" Loaded="ActivityPlot_OnLoaded" Unloaded="ActivityPlot_OnUnloaded" AutomationProperties.Name="Gráfico de atividade por snapshot"/>
+                    </Border>
                 </Grid>
             </ScrollViewer>
         </DataTemplate>
 
         <DataTemplate x:Key="MonitoringWorkspaceTemplate">
-            <Grid DataContext="{Binding TransactionsWorkspace}" Style="{StaticResource WorkspaceRoot}">
+            <Grid DataContext="{Binding TransactionsWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="140"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel>
-                        <TextBlock Text="{Binding DataContext.TransactionsTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                        <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding DataContext.TransactionsTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding TransactionCount, StringFormat={x:Static res:AppStrings.TransactionCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
+                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveTransactionCount, StringFormat={x:Static res:AppStrings.ActiveCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding TransactionCount, StringFormat=Transações: {0}}"/></Border>
-                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveTransactionCount, StringFormat=Ativas: {0}}"/></Border>
-                    </StackPanel>
-                </DockPanel>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
                 <Grid Grid.Row="1" Margin="0,16,0,10">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <TextBlock Text="{Binding DataContext.TransactionsFilterLabel, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/>
@@ -74,266 +127,305 @@
                 </Grid>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Transactions}" SelectedItem="{Binding SelectedTransaction}" AutomationProperties.Name="Lista de transações" TabIndex="11">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Transaction" Binding="{Binding TransactionId}" Width="100"/>
-                        <DataGridTextColumn Header="Attachment" Binding="{Binding AttachmentId}" Width="100"/>
-                        <DataGridTextColumn Header="State" Binding="{Binding State}" Width="80"/>
-                        <DataGridTextColumn Header="Started" Binding="{Binding StartedAt}" Width="160"/>
-                        <DataGridTextColumn Header="OIT" Binding="{Binding OldestTransaction}" Width="90"/>
-                        <DataGridTextColumn Header="OAT" Binding="{Binding OldestActive}" Width="90"/>
-                        <DataGridTextColumn Header="Isolation" Binding="{Binding IsolationMode}" Width="90"/>
-                        <DataGridTextColumn Header="Lock Timeout" Binding="{Binding LockTimeout}" Width="110"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnTransaction}" Binding="{Binding TransactionId}" Width="100"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnAttachment}" Binding="{Binding AttachmentId}" Width="100"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnState}" Binding="{Binding State}" Width="80"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnStarted}" Binding="{Binding StartedAt}" Width="160"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnOit}" Binding="{Binding OldestTransaction}" Width="90"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnOat}" Binding="{Binding OldestActive}" Width="90"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnIsolation}" Binding="{Binding IsolationMode}" Width="90"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnLockTimeout}" Binding="{Binding LockTimeout}" Width="110"/>
                     </DataGrid.Columns>
                 </DataGrid>
-                <Border Grid.Row="3" Margin="0,12,0,0" Background="{DynamicResource Brush.Surface.Workspace}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="1" CornerRadius="{DynamicResource Radius.L}" Padding="{DynamicResource Spacing.Thickness.L}">
+                <Border Grid.Row="3" Margin="0,12,0,0" Style="{DynamicResource Panel.Detail}">
                     <StackPanel>
                         <TextBlock Text="{Binding DataContext.TransactionDetailsTitle, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.NavigationItem}"/>
-                        <TextBlock Text="{Binding SelectedTransaction.TransactionId, StringFormat=ID: {0}}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,0"/>
-                        <TextBlock Text="{Binding SelectedTransaction.AttachmentId, StringFormat=Attachment: {0}}" Style="{DynamicResource Text.EmptyStateBody}"/>
-                        <TextBlock Text="{Binding SelectedTransaction.StartedAt, StringFormat=Início: {0}}" Style="{DynamicResource Text.EmptyStateBody}"/>
+                        <TextBlock Text="{Binding SelectedTransaction.TransactionId, StringFormat={x:Static res:AppStrings.IdFormat}}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding SelectedTransaction.AttachmentId, StringFormat={x:Static res:AppStrings.AttachmentFormat}}" Style="{DynamicResource Text.EmptyStateBody}"/>
+                        <TextBlock Text="{Binding SelectedTransaction.StartedAt, StringFormat={x:Static res:AppStrings.StartedFormat}}" Style="{DynamicResource Text.EmptyStateBody}"/>
                     </StackPanel>
                 </Border>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="ProfilerWorkspaceTemplate">
-            <Grid DataContext="{Binding ProfilerWorkspace}" Style="{StaticResource WorkspaceRoot}">
+            <Grid DataContext="{Binding ProfilerWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel>
-                        <TextBlock Text="SQL Profiler" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                        <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.SqlProfiler}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding BufferedCount, StringFormat={x:Static res:AppStrings.BufferCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding StateText}"/></Border>
-                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding BufferedCount, StringFormat=Buffer: {0}}"/></Border>
-                    </StackPanel>
-                </DockPanel>
-                <WrapPanel Grid.Row="1" Margin="0,12,0,8">
-                    <Button Content="{Binding DataContext.StartLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="StartProfilerButton_OnClick" MinWidth="82" AutomationProperties.Name="Iniciar SQL Profiler" TabIndex="20"/>
-                    <Button Content="{Binding DataContext.PauseViewLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="PauseProfilerButton_OnClick" MinWidth="138" Margin="8,0,0,8" AutomationProperties.Name="Pausar visualização do Profiler" TabIndex="21"/>
-                    <Button Content="{Binding DataContext.FollowLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="FollowProfilerButton_OnClick" MinWidth="76" Margin="8,0,0,8" AutomationProperties.Name="Retornar ao modo Follow" TabIndex="22"/>
-                    <Button Content="{Binding DataContext.StopLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="StopProfilerButton_OnClick" MinWidth="86" Margin="8,0,0,8" AutomationProperties.Name="Encerrar captura Trace" TabIndex="23"/>
-                    <Button Content="{Binding DataContext.ClearLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ClearProfilerButton_OnClick" MinWidth="76" Margin="8,0,0,8" AutomationProperties.Name="Limpar visualização do Profiler" TabIndex="24"/>
-                    <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Width="260" Margin="8,0,0,8" AutomationProperties.Name="Filtro SQL do Profiler" TabIndex="25"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                </Grid>
+                <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
+                    <Button Content="{Binding DataContext.StartLabel, RelativeSource={RelativeSource AncestorType=Window}}" IsEnabled="{Binding CanStart}" Click="StartProfilerButton_OnClick" Style="{DynamicResource Button.Primary}" MinWidth="82" AutomationProperties.Name="Iniciar SQL Profiler" TabIndex="20"/>
+                    <Button Content="{Binding PauseResumeLabel}" IsEnabled="{Binding CanPauseOrResume}" Click="PauseProfilerButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="150" AutomationProperties.Name="Pausar ou continuar visualização do Profiler" TabIndex="21"/>
+                    <Button Content="{Binding DataContext.StopLabel, RelativeSource={RelativeSource AncestorType=Window}}" IsEnabled="{Binding CanStop}" Click="StopProfilerButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="86" AutomationProperties.Name="Encerrar captura Trace" TabIndex="23"/>
+                    <Button Content="{Binding DataContext.ClearLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ClearProfilerButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Limpar visualização do Profiler" TabIndex="24"/>
+                    <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Filtro SQL do Profiler" TabIndex="25"/>
                 </WrapPanel>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent}" AutomationProperties.Name="Eventos do SQL Profiler" TabIndex="26">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="#" Binding="{Binding Sequence}" Width="64"/>
-                        <DataGridTextColumn Header="Hora" Binding="{Binding Timestamp}" Width="95"/>
-                        <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="120"/>
-                        <DataGridTextColumn Header="ms" Binding="{Binding Duration}" Width="70"/>
-                        <DataGridTextColumn Header="Usuário" Binding="{Binding UserName}" Width="90"/>
-                        <DataGridTextColumn Header="Att" Binding="{Binding AttachmentId}" Width="70"/>
-                        <DataGridTextColumn Header="Tra" Binding="{Binding TransactionId}" Width="70"/>
-                        <DataGridTextColumn Header="SQL / Trace" Binding="{Binding SqlPreview}" Width="*"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnSequence}" Binding="{Binding Sequence}" Width="64"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnTime}" Binding="{Binding Timestamp}" Width="95"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnType}" Binding="{Binding Type}" Width="120"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnDurationMs}" Binding="{Binding Duration}" Width="70"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnUser}" Binding="{Binding UserName}" Width="90"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnAttachmentShort}" Binding="{Binding AttachmentId}" Width="70"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnTransactionShort}" Binding="{Binding TransactionId}" Width="70"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnSqlTrace}" Binding="{Binding SqlPreview}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <TabControl Grid.Row="3" Margin="0,8,0,0" TabIndex="27">
-                    <TabItem Header="SQL"><TextBox Text="{Binding SelectedSql, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Performance"><TextBox Text="{Binding SelectedPerformance, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Contexto"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Plano"><TextBox Text="{Binding SelectedPlan, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Trace bruto"><TextBox Text="{Binding SelectedRawTrace, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabSql}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedSql, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabPerformance}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedPerformance, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabContext}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabPlan}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedPlan, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabRawTrace}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedRawTrace, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
                 </TabControl>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="HistoryWorkspaceTemplate">
-            <Grid DataContext="{Binding HistoryWorkspace}" Style="{StaticResource WorkspaceRoot}">
+            <Grid DataContext="{Binding HistoryWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="105"/></Grid.RowDefinitions>
-                <TextBlock Grid.Row="0" Text="Histórico" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                <Grid Grid.Row="1" Margin="0,12,0,8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <ComboBox Grid.Column="0" Text="{Binding DataKind, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" AutomationProperties.Name="Tipo de histórico" TabIndex="30"/>
-                    <TextBox Grid.Column="1" Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" AutomationProperties.Name="Filtro de usuário do histórico" TabIndex="31"/>
-                    <TextBox Grid.Column="2" Text="{Binding SqlText, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" AutomationProperties.Name="Filtro SQL do histórico" TabIndex="32"/>
-                    <Button Grid.Column="3" Content="_Pesquisar" Click="SearchHistoryButton_OnClick" MinWidth="86" Margin="8,0,0,0" AutomationProperties.Name="Pesquisar histórico" TabIndex="33"/>
-                    <Button Grid.Column="4" Content="CSV" Click="ExportHistoryCsvButton_OnClick" MinWidth="64" Margin="8,0,0,0" AutomationProperties.Name="Exportar histórico CSV" TabIndex="34"/>
-                    <Button Grid.Column="5" Content="JSON" Click="ExportHistoryJsonButton_OnClick" MinWidth="64" Margin="8,0,0,0" AutomationProperties.Name="Exportar histórico JSON" TabIndex="35"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Text="{x:Static res:AppStrings.History}" Style="{DynamicResource Text.EmptyStateTitle}"/>
                 </Grid>
+                <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
+                    <ComboBox ItemsSource="{Binding DataKindOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding DataKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" MinWidth="190" AutomationProperties.Name="Tipo de histórico" TabIndex="30"/>
+                    <TextBox Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" AutomationProperties.Name="Filtro de usuário do histórico" TabIndex="31"/>
+                    <TextBox Text="{Binding SqlText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Filtro SQL do histórico" TabIndex="32"/>
+                    <Button Content="{Binding DataContext.SearchLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="SearchHistoryButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Pesquisar histórico" TabIndex="33"/>
+                    <Button Content="{x:Static res:AppStrings.ExportCsv}" Click="ExportHistoryCsvButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="64" AutomationProperties.Name="Exportar histórico CSV" TabIndex="34"/>
+                    <Button Content="{x:Static res:AppStrings.ExportJson}" Click="ExportHistoryJsonButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="64" AutomationProperties.Name="Exportar histórico JSON" TabIndex="35"/>
+                </WrapPanel>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" AutomationProperties.Name="Resultados do histórico" TabIndex="36">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="56"/>
-                        <DataGridTextColumn Header="Hora" Binding="{Binding Timestamp}" Width="135"/>
-                        <DataGridTextColumn Header="Origem" Binding="{Binding Kind}" Width="82"/>
-                        <DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="110"/>
-                        <DataGridTextColumn Header="Usuário" Binding="{Binding UserName}" Width="90"/>
-                        <DataGridTextColumn Header="ms" Binding="{Binding Duration}" Width="70"/>
-                        <DataGridTextColumn Header="Resumo" Binding="{Binding Summary}" Width="*"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnId}" Binding="{Binding Id}" Width="56"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnTime}" Binding="{Binding Timestamp}" Width="135"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnSource}" Binding="{Binding Kind}" Width="82"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnType}" Binding="{Binding Type}" Width="110"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnUser}" Binding="{Binding UserName}" Width="90"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnDurationMs}" Binding="{Binding Duration}" Width="70"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnSummary}" Binding="{Binding Summary}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
-                <TextBox Grid.Row="3" Text="{Binding SelectedDetails, Mode=OneWay}" Margin="0,8,0,0" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" AutomationProperties.Name="Detalhes do histórico"/>
+                <TextBox Grid.Row="3" Text="{Binding SelectedDetails, Mode=OneWay}" Style="{DynamicResource TextBox.Details}" Margin="0,8,0,0" AutomationProperties.Name="Detalhes do histórico"/>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="AlertsWorkspaceTemplate">
-            <Grid DataContext="{Binding AlertsCenter}" Style="{StaticResource WorkspaceRoot}">
+            <Grid DataContext="{Binding AlertsCenter}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="120"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel>
-                        <TextBlock Text="Diagnóstico / Alertas" Style="{DynamicResource Text.EmptyStateTitle}"/>
-                        <TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Diagnostics}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
+                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveCount, StringFormat={x:Static res:AppStrings.ActiveCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
+                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding CriticalCount, StringFormat={x:Static res:AppStrings.CriticalCountFormat}}" TextTrimming="CharacterEllipsis"/></Border>
                     </StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                        <Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ActiveCount, StringFormat=Ativos: {0}}"/></Border>
-                        <Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding CriticalCount, StringFormat=Críticos: {0}}"/></Border>
-                    </StackPanel>
-                </DockPanel>
-                <Grid Grid.Row="1" Margin="0,12,0,8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <ComboBox Grid.Column="0" Text="{Binding StatusFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" AutomationProperties.Name="Filtro de status de alerta" TabIndex="40"/>
-                    <ComboBox Grid.Column="1" Text="{Binding SeverityFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Margin="8,0,0,0" AutomationProperties.Name="Filtro de severidade de alerta" TabIndex="41"/>
-                    <TextBlock Grid.Column="2" Text="{Binding DataContext.AlertsInstruction, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateBody}" VerticalAlignment="Center" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
-                    <Button Grid.Column="3" Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshAlertsButton_OnClick" MinWidth="86" Margin="8,0,0,0" AutomationProperties.Name="Atualizar alertas" TabIndex="43"/>
-                    <Button Grid.Column="4" Content="{Binding DataContext.AcknowledgeLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="AcknowledgeAlertButton_OnClick" MinWidth="98" Margin="8,0,0,0" AutomationProperties.Name="Reconhecer alerta" TabIndex="44"/>
-                    <Button Grid.Column="5" Content="{Binding DataContext.ResolveLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ResolveAlertButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Resolver alerta" TabIndex="45"/>
-                    <Button Grid.Column="6" Content="{Binding DataContext.ReopenLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ReopenAlertButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Reabrir alerta" TabIndex="46"/>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </Grid>
+                <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
+                    <ComboBox ItemsSource="{Binding StatusFilterOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding StatusFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de status de alerta" TabIndex="40"/>
+                    <ComboBox ItemsSource="{Binding SeverityFilterOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding SeverityFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de severidade de alerta" TabIndex="41"/>
+                    <TextBlock Text="{Binding DataContext.AlertsInstruction, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateBody}" VerticalAlignment="Center" Margin="0,0,8,8" TextTrimming="CharacterEllipsis" MaxWidth="320"/>
+                    <Button Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshAlertsButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Atualizar alertas" TabIndex="43"/>
+                    <Button Content="{Binding DataContext.AcknowledgeLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="AcknowledgeAlertButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="98" AutomationProperties.Name="Reconhecer alerta" TabIndex="44"/>
+                    <Button Content="{Binding DataContext.ResolveLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ResolveAlertButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Resolver alerta" TabIndex="45"/>
+                    <Button Content="{Binding DataContext.ReopenLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ReopenAlertButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Reabrir alerta" TabIndex="46"/>
+                </WrapPanel>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Alerts}" SelectedItem="{Binding SelectedAlert}" AutomationProperties.Name="Central de alertas" TabIndex="47">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Sev" Binding="{Binding Severity}" Width="70"/>
-                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
-                        <DataGridTextColumn Header="Regra" Binding="{Binding RuleId}" Width="170"/>
-                        <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="140"/>
-                        <DataGridTextColumn Header="Ocorr." Binding="{Binding Occurrences}" Width="70"/>
-                        <DataGridTextColumn Header="Último" Binding="{Binding LastSeen}" Width="135"/>
-                        <DataGridTextColumn Header="Mensagem" Binding="{Binding Message}" Width="*"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnSeverity}" Binding="{Binding Severity}" Width="70"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnStatus}" Binding="{Binding Status}" Width="100"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnRule}" Binding="{Binding RuleId}" Width="170"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnTarget}" Binding="{Binding Target}" Width="140"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnOccurrences}" Binding="{Binding Occurrences}" Width="70"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnLastSeen}" Binding="{Binding LastSeen}" Width="135"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnMessage}" Binding="{Binding Message}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <TabControl Grid.Row="3" Margin="0,8,0,0" AutomationProperties.Name="Detalhes do alerta">
-                    <TabItem Header="Resumo"><TextBox Text="{Binding SelectedSummary, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Evidências"><TextBox Text="{Binding SelectedEvidence, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Contexto"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Timeline"><TextBox Text="{Binding SelectedTimeline, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Regra"><TextBox Text="{Binding SelectedRule, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabSummary}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedSummary, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabEvidence}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedEvidence, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabContext}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabTimeline}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedTimeline, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabRule}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedRule, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
                 </TabControl>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="MetadataWorkspaceTemplate">
-            <Grid DataContext="{Binding MetadataExplorer}" Style="{StaticResource WorkspaceRoot}">
+            <Grid DataContext="{Binding MetadataExplorer}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="190"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel><TextBlock Text="Metadata Explorer" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
-                    <Border DockPanel.Dock="Right" Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding StateText}"/></Border>
-                </DockPanel>
-                <Grid Grid.Row="1" Margin="0,12,0,8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <TextBox Grid.Column="0" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Busca de metadata" TabIndex="50"/>
-                    <Button Grid.Column="1" Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadMetadataCatalogButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Carregar catálogo de metadata" TabIndex="51"/>
-                    <Button Grid.Column="2" Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataCatalogButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Atualizar catálogo de metadata" TabIndex="52"/>
-                    <Button Grid.Column="3" Content="{Binding DataContext.ObjectLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataObjectButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Atualizar objeto de metadata" TabIndex="53"/>
-                    <Button Grid.Column="4" Content="{Binding DataContext.BackLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MetadataBackButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Voltar metadata" TabIndex="54"/>
-                    <Button Grid.Column="5" Content="{Binding DataContext.ForwardLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MetadataForwardButton_OnClick" MinWidth="76" Margin="8,0,0,0" AutomationProperties.Name="Avançar metadata" TabIndex="55"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Metadata}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <Border Grid.Row="0" Grid.Column="1" Style="{DynamicResource Badge.Neutral}" VerticalAlignment="Top"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis"/></Border>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </Grid>
+                <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
+                    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Busca de metadata" TabIndex="50"/>
+                    <Button Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadMetadataCatalogButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Carregar catálogo de metadata" TabIndex="51"/>
+                    <Button Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataCatalogButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Atualizar catálogo de metadata" TabIndex="52"/>
+                    <Button Content="{Binding DataContext.RefreshObjectLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataObjectButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="118" AutomationProperties.Name="Atualizar objeto de metadata" TabIndex="53"/>
+                </WrapPanel>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Objects}" SelectedItem="{Binding SelectedObject}" AutomationProperties.Name="Objetos de metadata" TabIndex="56">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Tipo" Binding="{Binding Kind}" Width="120"/>
-                        <DataGridTextColumn Header="Nome" Binding="{Binding Name}" Width="220"/>
-                        <DataGridTextColumn Header="Descrição" Binding="{Binding Description}" Width="*"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnType}" Binding="{Binding Kind}" Width="120"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnName}" Binding="{Binding Name}" Width="220"/>
+                        <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnDescription}" Binding="{Binding Description}" Width="*"/>
                     </DataGrid.Columns>
                 </DataGrid>
                 <TabControl Grid.Row="3" Margin="0,8,0,0" TabIndex="57">
-                    <TabItem Header="Overview"><TextBox Text="{Binding SelectedOverview, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Columns"><TextBox Text="{Binding SelectedColumns, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Parameters"><TextBox Text="{Binding SelectedParameters, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Indexes"><TextBox Text="{Binding SelectedIndexes, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Constraints"><TextBox Text="{Binding SelectedConstraints, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Triggers"><TextBox Text="{Binding SelectedTriggers, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Dependencies"><TextBox Text="{Binding SelectedDependencies, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Source"><TextBox Text="{Binding SelectedSource, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="DDL"><TextBox Text="{Binding SelectedDdl, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
-                    <TabItem Header="Erro"><TextBox Text="{Binding SelectedError, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0"/></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabOverview}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedOverview, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabColumns}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedColumns, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabParameters}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedParameters, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabIndexes}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedIndexes, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabConstraints}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedConstraints, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabTriggers}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedTriggers, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabDependencies}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedDependencies, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabSource}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedSource, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabDdl}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedDdl, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabError}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedError, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
                 </TabControl>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="SecurityWorkspaceTemplate">
-            <Grid DataContext="{Binding SecurityWorkspace}" Style="{StaticResource WorkspaceRoot}">
+            <Grid DataContext="{Binding SecurityWorkspace}" Style="{DynamicResource Workspace.Root}">
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="100"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel><TextBlock Text="Segurança" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding StateText}"/></Border><Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding SummaryText}"/></Border></StackPanel>
-                </DockPanel>
-                <Grid Grid.Row="1" Margin="0,10,0,8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <TextBox Grid.Column="0" Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Filtro de segurança" TabIndex="60"/>
-                    <Button Grid.Column="1" Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadSecurityButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Carregar segurança" TabIndex="61"/>
-                    <Button Grid.Column="2" Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshSecurityButton_OnClick" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Atualizar segurança" TabIndex="62"/>
-                    <Button Grid.Column="3" Content="{Binding DataContext.MarkStaleLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MarkSecurityStaleButton_OnClick" MinWidth="98" Margin="8,0,0,0" AutomationProperties.Name="Marcar cache de segurança stale" TabIndex="63"/>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Security}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <Border Grid.Row="0" Grid.Column="1" Style="{DynamicResource Badge.Neutral}" VerticalAlignment="Top"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding SummaryText}" TextTrimming="CharacterEllipsis"/></Border>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </Grid>
+                <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
+                    <TextBox Text="{Binding FilterText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Filtro de segurança" TabIndex="60"/>
+                    <Button Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadSecurityButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Carregar segurança" TabIndex="61"/>
+                    <Button Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshSecurityButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Atualizar segurança" TabIndex="62"/>
+                    <Button Content="{Binding DataContext.MarkStaleLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MarkSecurityStaleButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="98" AutomationProperties.Name="Marcar cache de segurança stale" TabIndex="63"/>
+                </WrapPanel>
                 <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="260"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <DataGrid Grid.Column="0" ItemsSource="{Binding Principals}" SelectedItem="{Binding SelectedPrincipal}" Margin="0,0,8,0" AutomationProperties.Name="Usuários e roles" TabIndex="64">
-                        <DataGrid.Columns><DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="70"/><DataGridTextColumn Header="Nome" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Origem" Binding="{Binding Source}" Width="90"/></DataGrid.Columns>
+                        <DataGrid.Columns><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnType}" Binding="{Binding Type}" Width="70"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnName}" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnSource}" Binding="{Binding Source}" Width="90"/></DataGrid.Columns>
                     </DataGrid>
                     <DataGrid Grid.Column="1" ItemsSource="{Binding Grants}" SelectedItem="{Binding SelectedGrant}" AutomationProperties.Name="Grants de segurança" TabIndex="65">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Principal" Binding="{Binding Principal}" Width="150"/><DataGridTextColumn Header="Privilégio" Binding="{Binding Privilege}" Width="90"/><DataGridTextColumn Header="Objeto" Binding="{Binding Object}" Width="160"/>
-                            <DataGridTextColumn Header="Campo" Binding="{Binding Field}" Width="90"/><DataGridTextColumn Header="Grantor" Binding="{Binding Grantor}" Width="100"/><DataGridTextColumn Header="Tipo" Binding="{Binding Kind}" Width="120"/><DataGridTextColumn Header="Grant option" Binding="{Binding GrantOption}" Width="90"/>
+                            <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnPrincipal}" Binding="{Binding Principal}" Width="150"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnPrivilege}" Binding="{Binding Privilege}" Width="90"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnObject}" Binding="{Binding Object}" Width="160"/>
+                            <DataGridTextColumn Header="{x:Static res:AppStrings.ColumnField}" Binding="{Binding Field}" Width="90"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnGrantor}" Binding="{Binding Grantor}" Width="100"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnType}" Binding="{Binding Kind}" Width="120"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnGrantOption}" Binding="{Binding GrantOption}" Width="90"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>
-                <TextBox Grid.Row="3" Text="{Binding SelectedDetails, Mode=OneWay}" Margin="0,8,0,0" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" AutomationProperties.Name="Detalhes de segurança"/>
+                <TextBox Grid.Row="3" Text="{Binding SelectedDetails, Mode=OneWay}" Style="{DynamicResource TextBox.Details}" Margin="0,8,0,0" AutomationProperties.Name="Detalhes de segurança"/>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="MaintenanceWorkspaceTemplate">
-            <Grid DataContext="{Binding MaintenanceWorkspace}" Style="{StaticResource WorkspaceRoot}">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="110"/></Grid.RowDefinitions>
-                <DockPanel Grid.Row="0">
-                    <StackPanel><TextBlock Text="Manutenção" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Border Style="{DynamicResource Badge.Neutral}" Margin="0,0,8,0"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding Stage}"/></Border><Border Style="{DynamicResource Badge.Neutral}"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding ProgressText}"/></Border></StackPanel>
-                </DockPanel>
-                <Grid Grid.Row="1" Margin="0,10,0,8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <ComboBox Grid.Column="0" Text="{Binding OperationType, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" AutomationProperties.Name="Tipo de operação de manutenção" TabIndex="70"><ComboBoxItem Content="Backup"/><ComboBoxItem Content="Restore"/><ComboBoxItem Content="Validation"/><ComboBoxItem Content="Sweep"/></ComboBox>
-                    <TextBox Grid.Column="1" Text="{Binding SourcePath, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" AutomationProperties.Name="Caminho de origem da manutenção" TabIndex="71"/>
-                    <TextBox Grid.Column="2" Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" Margin="8,0,0,0" AutomationProperties.Name="Caminho de destino da manutenção" TabIndex="72"/>
-                    <CheckBox Grid.Column="3" Content="{Binding DataContext.ConfirmLabel, RelativeSource={RelativeSource AncestorType=Window}}" IsChecked="{Binding Confirmed}" VerticalAlignment="Center" Margin="8,0,0,0" AutomationProperties.Name="Confirmar operação de manutenção" TabIndex="73"/>
-                    <Button Grid.Column="4" Content="{Binding DataContext.ValidateLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ValidateMaintenanceButton_OnClick" MinWidth="74" Margin="8,0,0,0" AutomationProperties.Name="Validar manutenção" TabIndex="74"/>
-                    <Button Grid.Column="5" Content="{Binding DataContext.ExecuteLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ExecuteMaintenanceButton_OnClick" IsEnabled="{Binding CanExecute}" MinWidth="82" Margin="8,0,0,0" AutomationProperties.Name="Executar manutenção" TabIndex="75"/>
-                    <Button Grid.Column="6" Content="{Binding DataContext.CancelLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="CancelMaintenanceButton_OnClick" MinWidth="78" Margin="8,0,0,0" AutomationProperties.Name="Cancelar manutenção" TabIndex="76"/>
+            <Grid DataContext="{Binding MaintenanceWorkspace}" Style="{DynamicResource Workspace.Root}">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="110"/></Grid.RowDefinitions>
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{x:Static res:AppStrings.Maintenance}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                    <Border Grid.Row="0" Grid.Column="1" Style="{DynamicResource Badge.Neutral}" VerticalAlignment="Top"><TextBlock Style="{DynamicResource Text.Badge}" Text="{Binding Stage}" TextTrimming="CharacterEllipsis"/></Border>
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </Grid>
-                <Grid Grid.Row="2">
+                <Border Grid.Row="1" Style="{DynamicResource Panel.Detail}" Margin="0,12,0,8" Visibility="{Binding IsProgressVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" LastChildFill="True">
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding ProgressText}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis" Margin="12,0,0,0"/>
+                            <TextBlock Text="{Binding ProgressStatusText}" Style="{DynamicResource Text.EmptyStateBody}" TextWrapping="Wrap"/>
+                        </DockPanel>
+                        <ProgressBar Grid.Row="1"
+                                     Height="18"
+                                     Margin="0,8,0,0"
+                                     Minimum="0"
+                                     Maximum="100"
+                                     Value="{Binding ProgressValue}"
+                                     IsIndeterminate="{Binding IsProgressIndeterminate}"
+                                     Foreground="{DynamicResource Brush.Accent}"
+                                     Background="{DynamicResource Brush.Surface.Input}"
+                                     BorderBrush="{DynamicResource Brush.Border.Subtle}"
+                                     AutomationProperties.Name="Progresso da manutenção"/>
+                    </Grid>
+                </Border>
+                <WrapPanel Grid.Row="2" Style="{DynamicResource Workspace.Toolbar}">
+                    <ComboBox ItemsSource="{Binding OperationTypeOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding OperationType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" MinWidth="132" AutomationProperties.Name="Tipo de operação de manutenção" TabIndex="70"/>
+                    <TextBlock Text="{Binding SourcePathLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center" Margin="0,0,6,8"/>
+                    <TextBox Text="{Binding SourcePath, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="220" AutomationProperties.Name="Caminho de origem da manutenção" TabIndex="71"/>
+                    <TextBlock Text="{Binding TargetPathLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center" Margin="0,0,6,8"/>
+                    <TextBox Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsTargetPathEnabled}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="220" AutomationProperties.Name="Caminho de destino da manutenção" TabIndex="72"/>
+                    <CheckBox Content="{Binding DataContext.ConfirmLabel, RelativeSource={RelativeSource AncestorType=Window}}" IsChecked="{Binding Confirmed}" Margin="0,0,8,8" AutomationProperties.Name="Confirmar operação de manutenção" TabIndex="73"/>
+                    <Button Content="{Binding DataContext.ValidateLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ValidateMaintenanceButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Validar manutenção" TabIndex="74"/>
+                    <Button Content="{Binding DataContext.ExecuteLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ExecuteMaintenanceButton_OnClick" IsEnabled="{Binding CanExecute}" Style="{DynamicResource Button.Primary}" AutomationProperties.Name="Executar manutenção" TabIndex="75"/>
+                    <Button Content="{Binding DataContext.CancelLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="CancelMaintenanceButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Cancelar manutenção" TabIndex="76"/>
+                </WrapPanel>
+                <Grid Grid.Row="3">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding ToolsetText}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
                     <Button Grid.Row="0" Grid.Column="1" Content="{Binding DataContext.UpdateHistoryLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMaintenanceHistoryButton_OnClick" HorizontalAlignment="Right" MinWidth="126" AutomationProperties.Name="Atualizar histórico de manutenção"/>
-                    <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding PreflightText, Mode=OneWay}" Margin="0,8,8,0" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" AutomationProperties.Name="Resultado do preflight"/>
-                    <ListBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Logs}" Margin="8,8,0,0" AutomationProperties.Name="Log de manutenção"/>
+                    <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding PreflightText, Mode=OneWay}" Style="{DynamicResource TextBox.Details}" Margin="0,8,8,0" AutomationProperties.Name="Resultado do preflight"/>
+                    <ListBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Logs}" Style="{DynamicResource ListBox.Log}" Margin="8,8,0,0" AutomationProperties.Name="Log de manutenção"/>
                 </Grid>
-                <Grid Grid.Row="3" Margin="0,8,0,0">
+                <Grid Grid.Row="4" Margin="0,8,0,0">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions>
                     <DataGrid Grid.Column="0" ItemsSource="{Binding History}" SelectedItem="{Binding SelectedHistory}" AutomationProperties.Name="Histórico de manutenção" TabIndex="77">
-                        <DataGrid.Columns><DataGridTextColumn Header="Tipo" Binding="{Binding Type}" Width="90"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="Início" Binding="{Binding StartedAt}" Width="120"/><DataGridTextColumn Header="Mensagem" Binding="{Binding Message}" Width="*"/></DataGrid.Columns>
+                        <DataGrid.Columns><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnType}" Binding="{Binding Type}" Width="90"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnStatus}" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnStarted}" Binding="{Binding StartedAt}" Width="120"/><DataGridTextColumn Header="{x:Static res:AppStrings.ColumnMessage}" Binding="{Binding Message}" Width="*"/></DataGrid.Columns>
                     </DataGrid>
-                    <TextBox Grid.Column="1" Text="{Binding SelectedHistoryDetails, Mode=OneWay}" Margin="8,0,0,0" IsReadOnly="True" TextWrapping="Wrap" BorderThickness="0" AutomationProperties.Name="Detalhes da manutenção"/>
+                    <TextBox Grid.Column="1" Text="{Binding SelectedHistoryDetails, Mode=OneWay}" Style="{DynamicResource TextBox.Details}" Margin="8,0,0,0" AutomationProperties.Name="Detalhes da manutenção"/>
                 </Grid>
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="SettingsWorkspaceTemplate">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <Grid Style="{StaticResource WorkspaceRoot}" MaxWidth="760" HorizontalAlignment="Left">
+                <Grid Style="{DynamicResource Workspace.Root}" MaxWidth="760" HorizontalAlignment="Left">
                     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                    <StackPanel Grid.Row="0"><TextBlock Text="{Binding ConnectionProfilesTitle}" Style="{DynamicResource Text.EmptyStateTitle}"/><TextBlock Text="{Binding WorkspacePlaceholder}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,16" TextWrapping="Wrap"/></StackPanel>
+                    <Grid Grid.Row="0" Margin="0,0,0,16">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Text="{Binding ConnectionProfilesTitle}" Style="{DynamicResource Text.EmptyStateTitle}"/>
+                        <TextBlock Grid.Row="1" Text="{Binding WorkspacePlaceholder}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                    </Grid>
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Text="{Binding NameLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ProfileName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Nome do perfil" TabIndex="80"/>
                         <TextBlock Grid.Row="1" Text="{Binding HostLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Servidor Firebird" TabIndex="81"/>
                         <TextBlock Grid.Row="2" Text="{Binding PortLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Porta Firebird" TabIndex="82"/>
-                        <TextBlock Grid.Row="3" Text="{Binding DatabaseLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Banco ou alias Firebird" TabIndex="83"/>
-                        <TextBlock Grid.Row="4" Text="{Binding UserNameLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Usuário Firebird" TabIndex="84"/>
-                        <TextBlock Grid.Row="5" Text="{Binding PasswordLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><PasswordBox Grid.Row="5" Grid.Column="1" Loaded="PasswordInput_OnLoaded" Unloaded="PasswordInput_OnUnloaded" Margin="0,0,0,10" AutomationProperties.Name="Senha Firebird" TabIndex="85"/>
-                        <TextBlock Grid.Row="6" Text="{Binding RoleLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="6" Grid.Column="1" Text="{Binding Role, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Role Firebird" TabIndex="86"/>
-                        <CheckBox Grid.Row="7" Grid.Column="1" Content="{Binding RememberPasswordLabel}" IsChecked="{Binding RememberPassword}" Margin="0,2,0,14" AutomationProperties.Name="Lembrar senha" TabIndex="87"/>
-                        <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal">
-                            <Button Content="_Salvar perfil" Click="SaveProfileButton_OnClick" MinWidth="110" AutomationProperties.Name="Salvar perfil de conexão" TabIndex="88"/>
-                            <Button Content="_Testar conexão" Click="TestConnectionButton_OnClick" MinWidth="130" Margin="8,0,0,0" AutomationProperties.Name="Testar conexão Firebird" TabIndex="89"/>
-                            <Button Content="_Conectar" Click="ConnectButton_OnClick" MinWidth="100" Margin="8,0,0,0" IsDefault="True" AutomationProperties.Name="Conectar ao Firebird" TabIndex="90"/>
-                        </StackPanel>
+                        <TextBlock Grid.Row="3" Text="{Binding DatabaseLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/>
+                        <Grid Grid.Row="3" Grid.Column="1" Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Grid.Column="0" Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Banco ou alias Firebird" TabIndex="83"/>
+                            <Button Grid.Column="1" Content="{Binding SelectDatabaseLabel}" Click="SelectDatabaseButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="104" Margin="8,0,0,0" AutomationProperties.Name="Selecionar arquivo de banco Firebird" TabIndex="84"/>
+                        </Grid>
+                        <TextBlock Grid.Row="4" Text="{Binding UserNameLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="4" Grid.Column="1" Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Usuário Firebird" TabIndex="85"/>
+                        <TextBlock Grid.Row="5" Text="{Binding PasswordLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/>
+                        <PasswordBox Grid.Row="5" Grid.Column="1" Loaded="PasswordInput_OnLoaded" Unloaded="PasswordInput_OnUnloaded" Margin="0,0,0,4" AutomationProperties.Name="Senha Firebird" TabIndex="86"/>
+                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding PasswordStatusText}" Style="{DynamicResource Text.StatusBar}" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                        <TextBlock Grid.Row="7" Text="{Binding RoleLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center"/><TextBox Grid.Row="7" Grid.Column="1" Text="{Binding Role, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" AutomationProperties.Name="Role Firebird" TabIndex="87"/>
+                        <CheckBox Grid.Row="8" Grid.Column="1" Content="{Binding RememberPasswordLabel}" IsChecked="{Binding RememberPassword}" Margin="0,2,0,14" AutomationProperties.Name="Lembrar senha" TabIndex="88"/>
+                        <WrapPanel Grid.Row="9" Grid.Column="1">
+                            <Button Content="{Binding SaveProfileLabel}" Click="SaveProfileButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="110" AutomationProperties.Name="Salvar perfil de conexão" TabIndex="89"/>
+                            <Button Content="{Binding TestConnectionLabel}" Click="TestConnectionButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="130" AutomationProperties.Name="Testar conexão Firebird" TabIndex="90"/>
+                            <Button Content="{Binding ConnectLabel}" Click="ConnectButton_OnClick" Style="{DynamicResource Button.Primary}" MinWidth="100" IsDefault="True" AutomationProperties.Name="Conectar ao Firebird" TabIndex="91"/>
+                        </WrapPanel>
                     </Grid>
                 </Grid>
             </ScrollViewer>
@@ -341,19 +433,96 @@
     </Window.Resources>
 
     <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="{DynamicResource Size.StatusBar.Height}"/></Grid.RowDefinitions>
-        <Grid Grid.Row="0">
+        <Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="*"/><RowDefinition Height="{DynamicResource Size.StatusBar.Height}"/></Grid.RowDefinitions>
+        <Border Grid.Row="0"
+                Background="{DynamicResource Brush.Accent.Strong}"
+                BorderBrush="{DynamicResource Brush.Border.Strong}"
+                BorderThickness="0,0,0,1"
+                MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown"
+                AutomationProperties.Name="Barra de título do Firebird Admin">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Image Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin_Icon_1024.png"
+                           Width="20"
+                           Height="20"
+                           Stretch="Uniform"
+                           Margin="0,0,8,0"
+                           AutomationProperties.Name="Ícone Firebird Admin"/>
+                    <TextBlock Text="{Binding ApplicationName}"
+                               Foreground="{DynamicResource Brush.Text.OnAccent}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="&#xE921;"
+                            Click="MinimizeWindowButton_OnClick"
+                            Style="{DynamicResource Button.WindowChrome}"
+                            ToolTip="Minimizar"
+                            AutomationProperties.Name="Minimizar janela"/>
+                    <Button Click="MaximizeRestoreWindowButton_OnClick"
+                            Style="{DynamicResource Button.WindowChrome}"
+                            ToolTip="Maximizar ou restaurar"
+                            AutomationProperties.Name="Maximizar ou restaurar janela">
+                        <TextBlock x:Name="MaximizeRestoreGlyph" Text="&#xE923;" FontFamily="Segoe MDL2 Assets"/>
+                    </Button>
+                    <Button Content="&#xE8BB;"
+                            Click="CloseWindowButton_OnClick"
+                            Style="{DynamicResource Button.WindowClose}"
+                            ToolTip="Fechar"
+                            AutomationProperties.Name="Fechar janela"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions><ColumnDefinition Width="{DynamicResource Size.Navigation.ExpandedWidth}"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Background="{DynamicResource Brush.Surface.Navigation}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,1,0" Padding="{DynamicResource Spacing.Thickness.L}">
                 <DockPanel LastChildFill="True">
                     <TextBlock DockPanel.Dock="Top" Text="{Binding NavigationTitle}" Style="{DynamicResource Text.NavigationTitle}"/>
+                    <Button DockPanel.Dock="Bottom"
+                            Click="ExitButton_OnClick"
+                            Style="{DynamicResource Button.Toolbar}"
+                            Margin="0,12,0,0"
+                            HorizontalContentAlignment="Stretch"
+                            AutomationProperties.Name="Sair do Firebird Admin">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="24"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="&#xE8BB;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       Foreground="{DynamicResource Brush.Text.Subtle}"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding ExitLabel}"
+                                       Style="{DynamicResource Text.NavigationItem}"
+                                       Margin="8,0,0,0"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Button>
                     <ListBox ItemsSource="{Binding NavigationItems}" SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{DynamicResource ListBox.Navigation}" Margin="0,16,0,0" AutomationProperties.Name="Navegação principal">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <DockPanel LastChildFill="True" Margin="0,2">
-                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Shortcut}" Style="{DynamicResource Text.StatusBar}" Margin="8,0,0,0"/>
-                                    <AccessText Text="{Binding AccessText}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource Brush.App.Foreground}"/>
-                                </DockPanel>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding IconGlyph}"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               Foreground="{DynamicResource Brush.Text.Subtle}"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center"/>
+                                    <AccessText Grid.Column="1" Text="{Binding AccessText}" Margin="8,0,0,0"/>
+                                </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -361,13 +530,28 @@
             </Border>
             <Grid Grid.Column="1">
                 <Grid.RowDefinitions><RowDefinition Height="{DynamicResource Size.ConnectionContext.Height}"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.Raised}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,0,1" Padding="{DynamicResource Spacing.Thickness.L}">
+                <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.Raised}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,0,0,1" Padding="16,10">
                     <DockPanel LastChildFill="True">
-                        <StackPanel><TextBlock Text="{Binding ApplicationName}" Style="{DynamicResource Text.AppTitle}"/><TextBlock Text="{Binding WorkspaceTitle}" Style="{DynamicResource Text.StatusBar}" Margin="0,2,0,0"/></StackPanel>
-                        <Border DockPanel.Dock="Right" Style="{DynamicResource Badge.Neutral}" MaxWidth="620"><TextBlock Text="{Binding ConnectionContext}" Style="{DynamicResource Text.Badge}" TextTrimming="CharacterEllipsis"/></Border>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Image Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin_Icon_1024.png"
+                                   Width="34"
+                                   Height="34"
+                                   Margin="0,0,10,0"
+                                   Stretch="Uniform"
+                                   AutomationProperties.Name="Firebird Admin"/>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ApplicationName}" Style="{DynamicResource Text.AppTitle}"/>
+                                <TextBlock Text="{Binding WorkspaceTitle}" Style="{DynamicResource Text.StatusBar}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="{Binding AboutLabel}" Command="{Binding ShowAboutCommand}" Style="{DynamicResource Button.Toolbar}" MinWidth="76" Margin="0,0,8,0" AutomationProperties.Name="Abrir informações sobre o Firebird Admin"/>
+                            <Button Content="{Binding ThemeToggleLabel}" Command="{Binding ToggleThemeCommand}" Style="{DynamicResource Button.Toolbar}" MinWidth="104" Margin="0,0,8,0" AutomationProperties.Name="Alternar tema"/>
+                            <Border Style="{DynamicResource Badge.Neutral}" MaxWidth="620"><TextBlock Text="{Binding ConnectionContext}" Style="{DynamicResource Text.Badge}" TextTrimming="CharacterEllipsis"/></Border>
+                        </StackPanel>
                     </DockPanel>
                 </Border>
-                <Border Grid.Row="1" Margin="{DynamicResource Spacing.Thickness.XL}" Style="{DynamicResource Card.Workspace}">
+                <Border Grid.Row="1" Background="{DynamicResource Brush.Surface.Workspace}" Style="{DynamicResource Card.Workspace}">
                     <ContentControl Content="{Binding}">
                         <ContentControl.Style>
                             <Style TargetType="ContentControl">
@@ -389,7 +573,7 @@
                 </Border>
             </Grid>
         </Grid>
-        <Border Grid.Row="1" Background="{DynamicResource Brush.Surface.StatusBar}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,1,0,0" Padding="{DynamicResource Spacing.StatusBar.Padding}">
+        <Border Grid.Row="2" Background="{DynamicResource Brush.Surface.StatusBar}" BorderBrush="{DynamicResource Brush.Border.Subtle}" BorderThickness="0,1,0,0" Padding="{DynamicResource Spacing.StatusBar.Padding}">
             <DockPanel LastChildFill="False" VerticalAlignment="Center">
                 <TextBlock Text="{Binding ReadyStatus}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
                 <TextBlock Text="{Binding TraceStatus}" Style="{DynamicResource Text.StatusBar}" Margin="24,0,0,0" TextTrimming="CharacterEllipsis"/>
@@ -397,5 +581,28 @@
                 <TextBlock DockPanel.Dock="Right" Text="{Binding KeyboardHelp}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
+        <Grid Grid.RowSpan="3"
+              Panel.ZIndex="20"
+              Background="{DynamicResource Brush.Surface.Workspace}"
+              Visibility="{Binding IsAboutOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Border Style="{DynamicResource Panel.Detail}"
+                    Width="460"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Padding="24"
+                    AutomationProperties.Name="{Binding AboutTitle}">
+                <StackPanel>
+                    <Image Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin_Logo.png"
+                           Height="104"
+                           Stretch="Uniform"
+                           Margin="0,0,0,20"
+                           AutomationProperties.Name="Logo Firebird Admin"/>
+                    <TextBlock Text="{Binding AboutTitle}" Style="{DynamicResource Text.EmptyStateTitle}" TextAlignment="Center"/>
+                    <TextBlock Text="{Binding AboutVersionText}" Style="{DynamicResource Text.StatusBar}" TextAlignment="Center" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding AboutDescription}" Style="{DynamicResource Text.EmptyStateBody}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,16,0,20"/>
+                    <Button Content="{Binding AboutCloseLabel}" Command="{Binding CloseAboutCommand}" Style="{DynamicResource Button.Primary}" MinWidth="96" HorizontalAlignment="Center" IsCancel="True" AutomationProperties.Name="Fechar sobre o Firebird Admin"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

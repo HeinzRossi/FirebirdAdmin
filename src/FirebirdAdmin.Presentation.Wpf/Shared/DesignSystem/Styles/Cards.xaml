@@ -12,4 +12,136 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
+    <Style x:Key="Workspace.Root" TargetType="FrameworkElement">
+        <Setter Property="Margin" Value="{DynamicResource Spacing.Thickness.XL}"/>
+    </Style>
+    <Style x:Key="Workspace.Toolbar" TargetType="WrapPanel">
+        <Setter Property="Margin" Value="0,12,0,8"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Toolbar}"/>
+    </Style>
+    <Style x:Key="Card.Metric" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource Radius.M}"/>
+        <Setter Property="Padding" Value="14,12"/>
+        <Setter Property="Margin" Value="0,0,8,8"/>
+        <Setter Property="MinWidth" Value="150"/>
+    </Style>
+    <Style x:Key="Panel.Detail" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource Radius.L}"/>
+        <Setter Property="Padding" Value="{DynamicResource Spacing.Thickness.L}"/>
+    </Style>
+    <Style x:Key="TabContent.Root" TargetType="Grid">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+    </Style>
+
+    <Style TargetType="TabControl">
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabControl}">
+                    <Grid KeyboardNavigation.TabNavigation="Local" SnapsToDevicePixels="True">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <TabPanel x:Name="HeaderPanel"
+                                  Grid.Row="0"
+                                  Panel.ZIndex="1"
+                                  IsItemsHost="True"
+                                  KeyboardNavigation.TabIndex="1"
+                                  Background="{DynamicResource Brush.Surface.Toolbar}"/>
+                        <Border Grid.Row="1"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter x:Name="PART_SelectedContentHost"
+                                              ContentSource="SelectedContent"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              Margin="{TemplateBinding Padding}"
+                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="TabItem">
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="Foreground" Value="{DynamicResource Brush.App.Foreground}"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Toolbar}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style TargetType="Control">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Rectangle Stroke="{DynamicResource Brush.Focus}" StrokeThickness="2" RadiusX="4" RadiusY="4" Margin="-3"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type TabItem}">
+                    <Border x:Name="TabBorder"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="4,4,0,0"
+                            Margin="0,0,2,0"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter x:Name="ContentSite"
+                                          ContentSource="Header"
+                                          RecognizesAccessKey="True"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource Brush.Surface.Hover}"/>
+                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}"/>
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter Property="Panel.ZIndex" Value="2"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.App.Foreground}"/>
+                            <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource Brush.Focus}"/>
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource Brush.Focus}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}"/>
+                            <Setter TargetName="TabBorder" Property="Opacity" Value="0.72"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>

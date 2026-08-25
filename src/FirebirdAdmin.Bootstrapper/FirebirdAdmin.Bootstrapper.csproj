@@ -7,6 +7,7 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>false</PublishSingleFile>
     <PublishReadyToRun>false</PublishReadyToRun>
+    <ApplicationIcon>..\FirebirdAdmin.Presentation.Wpf\Assets\Branding\FirebirdAdmin.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

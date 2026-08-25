@@ -69,7 +69,7 @@ public sealed class MaintenanceService(
                 Status = status,
                 FinishedAt = DateTimeOffset.UtcNow,
                 ExitCode = result.ExitCode,
-                Message = status is MaintenanceOperationStatus.Succeeded ? "Operação concluída." : $"Operação falhou com exit code {result.ExitCode}."
+                Message = status is MaintenanceOperationStatus.Succeeded ? "Operação concluída." : $"Operação falhou com código de saída {result.ExitCode}."
             };
             await historyStore.SaveOperationAsync(ActiveOperation, CancellationToken.None);
             RaiseProgress(operationId, "Resultado", 1, ActiveOperation.Message);

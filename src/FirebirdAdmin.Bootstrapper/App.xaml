@@ -11,13 +11,14 @@
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Tokens/Sizes.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Tokens/Radius.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Tokens/Shadows.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Themes/Light.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Themes/Dark.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/Cards.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/Badges.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/Buttons.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/TextBoxes.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/ComboBoxes.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/DataGrids.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/Controls.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Shared/DesignSystem/Styles/Navigation.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
