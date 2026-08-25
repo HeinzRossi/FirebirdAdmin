@@ -29,6 +29,7 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IHistoryWriter historyWriter;
     private readonly IDiagnosticEngine diagnosticEngine;
     private readonly IThemeService themeService;
+    private IReadOnlyList<ConnectionProfile> connectionProfiles = [];
     private CancellationTokenSource? monitoringReadCts;
     private byte[]? activeSessionCredentialBytes;
 
@@ -55,6 +56,9 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     private bool rememberPassword;
+
+    [ObservableProperty]
+    private bool hasSavedPasswordForProfile;
 
     [ObservableProperty]
     private ShellConnectionState connectionState = ShellConnectionState.Disconnected;
@@ -170,6 +174,9 @@ public sealed partial class ShellViewModel : ObservableObject
     public string PasswordLabel => AppStrings.Password;
     public string RoleLabel => AppStrings.Role;
     public string RememberPasswordLabel => AppStrings.RememberPassword;
+    public string PasswordStatusText => HasSavedPasswordForProfile
+        ? AppStrings.PasswordSavedForProfile
+        : AppStrings.PasswordNotSavedForProfile;
     public string SaveProfileLabel => AppStrings.SaveProfile;
     public string TestConnectionLabel => AppStrings.TestConnection;
     public string ConnectLabel => AppStrings.Connect;
@@ -260,15 +267,41 @@ public sealed partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(ThemeToggleLabel));
     }
 
+    partial void OnProfileNameChanged(string value)
+    {
+        UpdatePasswordStatusFromProfileName();
+    }
+
+    partial void OnHasSavedPasswordForProfileChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PasswordStatusText));
+    }
+
     partial void OnOperationMessageChanged(string value)
     {
         OnPropertyChanged(nameof(WorkspacePlaceholder));
+    }
+
+    public async Task LoadInitialProfileAsync(CancellationToken cancellationToken = default)
+    {
+        connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
+        var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName, StringComparison.OrdinalIgnoreCase))
+            ?? connectionProfiles.FirstOrDefault();
+
+        if (profile is null)
+        {
+            HasSavedPasswordForProfile = false;
+            return;
+        }
+
+        ApplyProfile(profile);
     }
 
     public async Task SaveProfileAsync(string password, CancellationToken cancellationToken = default)
     {
         using var secret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
         await connectionProfileService.SaveAsync(CreateProfileRequest(secret), cancellationToken);
+        await LoadInitialProfileAsync(cancellationToken);
         OperationMessage = "Perfil salvo.";
     }
 
@@ -366,13 +399,18 @@ public sealed partial class ShellViewModel : ObservableObject
         byte[]? credentialBytes = null;
         try
         {
+            var existingProfile = await FindProfileByNameAsync(ProfileName, cancellationToken);
+            var preserveSavedPassword = existingProfile?.HasSavedPassword == true && !RememberPassword;
             using var profileSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(profileSecret), cancellationToken);
+            var secretToSave = RememberPassword ? profileSecret : null;
+            var profile = await connectionProfileService.SaveAsync(
+                CreateProfileRequest(secretToSave, rememberPasswordOverride: RememberPassword || preserveSavedPassword),
+                cancellationToken);
             using var savedSecret = profileSecret is null ? await credentialStore.TryLoadAsync(profile.Id, cancellationToken) : null;
 
             credentialBytes = !string.IsNullOrEmpty(password)
                 ? Encoding.UTF8.GetBytes(password)
-                : savedSecret?.CopyBytes();
+                : savedSecret?.CopyBytes() ?? activeSessionCredentialBytes?.ToArray();
 
             using var connectionSecret = CreateSecretCopy(credentialBytes);
             var context = await firebirdConnectionService.ConnectAsync(
@@ -381,6 +419,8 @@ public sealed partial class ShellViewModel : ObservableObject
 
             if (setActiveConnection)
             {
+                HasSavedPasswordForProfile = profile.HasSavedPassword;
+                RememberPassword = profile.HasSavedPassword || RememberPassword;
                 StoreActiveSessionCredential(credentialBytes);
                 ActiveConnection = context;
                 ProfilerWorkspace.SetReady();
@@ -487,6 +527,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private ConnectionProfileRequest CreateProfileRequest(CredentialSecret? secret)
     {
+        return CreateProfileRequest(secret, rememberPasswordOverride: null);
+    }
+
+    private ConnectionProfileRequest CreateProfileRequest(CredentialSecret? secret, bool? rememberPasswordOverride)
+    {
         return new ConnectionProfileRequest(
             Id: null,
             ProfileName,
@@ -496,8 +541,33 @@ public sealed partial class ShellViewModel : ObservableObject
             UserName,
             Charset,
             Role,
-            RememberPassword,
+            rememberPasswordOverride ?? RememberPassword,
             secret);
+    }
+
+    private async Task<ConnectionProfile?> FindProfileByNameAsync(string profileName, CancellationToken cancellationToken)
+    {
+        connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
+        return connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(profileName.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ApplyProfile(ConnectionProfile profile)
+    {
+        ProfileName = profile.Name;
+        Host = profile.Host;
+        Port = profile.Port;
+        Database = profile.Database;
+        UserName = profile.UserName;
+        Charset = profile.Charset;
+        Role = profile.Role;
+        RememberPassword = profile.HasSavedPassword;
+        HasSavedPasswordForProfile = profile.HasSavedPassword;
+    }
+
+    private void UpdatePasswordStatusFromProfileName()
+    {
+        var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase));
+        HasSavedPasswordForProfile = profile?.HasSavedPassword == true;
     }
 
     private static CredentialSecret? CreateSecretCopy(byte[]? bytes)
@@ -518,6 +588,11 @@ public sealed partial class ShellViewModel : ObservableObject
             Array.Clear(activeSessionCredentialBytes);
             activeSessionCredentialBytes = null;
         }
+    }
+
+    public void ClearSessionCredentialForShutdown()
+    {
+        ClearActiveSessionCredential();
     }
 
     private async Task PersistMonitoringSnapshotAsync(MonitoringSnapshot snapshot)

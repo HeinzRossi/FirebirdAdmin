@@ -102,8 +102,37 @@ public sealed class ConnectionProfileServiceTests
         entity.ProtectedPasswordBlob.Should().BeNull();
     }
 
+    [Fact]
+    public async Task SaveAsync_ShouldPreserveSavedPasswordWhenUpdatingExistingProfileWithoutNewPassword()
+    {
+        using var fixture = TempDatabaseFixture.Create();
+        var factory = new InfrastructureTestDbContextFactory(fixture.DatabasePath);
+        var credentialStore = new DpapiCredentialStore(factory);
+        var service = new ConnectionProfileService(factory, credentialStore);
+
+        using var savedPassword = CredentialSecret.FromPlainText("masterkey");
+        var first = await service.SaveAsync(CreateRequest(savedPassword, rememberPassword: true), CancellationToken.None);
+
+        var second = await service.SaveAsync(
+            CreateRequest(
+                password: null,
+                rememberPassword: true,
+                host: "server-02",
+                database: "prod.fdb"),
+            CancellationToken.None);
+
+        second.Id.Should().Be(first.Id);
+        second.Host.Should().Be("server-02");
+        second.Database.Should().Be("prod.fdb");
+        second.HasSavedPassword.Should().BeTrue();
+
+        var loadedSecret = await credentialStore.TryLoadAsync(second.Id, CancellationToken.None);
+        loadedSecret.Should().NotBeNull();
+        loadedSecret!.RevealAsString().Should().Be("masterkey");
+    }
+
     private static ConnectionProfileRequest CreateRequest(
-        CredentialSecret password,
+        CredentialSecret? password,
         bool rememberPassword,
         string host = "localhost",
         string database = "employee.fdb",

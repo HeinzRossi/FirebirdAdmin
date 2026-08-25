@@ -84,6 +84,15 @@
   <data name="Password" xml:space="preserve">
     <value>Senha</value>
   </data>
+  <data name="PasswordSavedForProfile" xml:space="preserve">
+    <value>Senha salva para este perfil.</value>
+  </data>
+  <data name="PasswordNotSavedForProfile" xml:space="preserve">
+    <value>Senha não salva.</value>
+  </data>
+  <data name="PasswordUnavailable" xml:space="preserve">
+    <value>A senha da sessão não está disponível. Reconecte ou salve o perfil com senha lembrada.</value>
+  </data>
   <data name="PollingStopped" xml:space="preserve">
     <value>Polling parado</value>
   </data>

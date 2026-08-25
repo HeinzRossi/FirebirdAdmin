@@ -27,9 +27,22 @@ public partial class MainWindow
         DataContext = viewModel;
         viewModel.Dashboard.ActivityChanged += Dashboard_OnActivityChanged;
         viewModel.PropertyChanged += ShellViewModel_OnPropertyChanged;
+        Loaded += MainWindow_OnLoaded;
         Closed += MainWindow_OnClosed;
         UpdateActivityPlot();
         UpdateMaximizeRestoreGlyph();
+    }
+
+    private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await viewModel.LoadInitialProfileAsync();
+        }
+        catch (Exception ex)
+        {
+            viewModel.OperationMessage = ex.Message;
+        }
     }
 
     private void Dashboard_OnActivityChanged(object? sender, EventArgs e)
@@ -106,6 +119,8 @@ public partial class MainWindow
     {
         viewModel.Dashboard.ActivityChanged -= Dashboard_OnActivityChanged;
         viewModel.PropertyChanged -= ShellViewModel_OnPropertyChanged;
+        viewModel.ClearSessionCredentialForShutdown();
+        Loaded -= MainWindow_OnLoaded;
         Closed -= MainWindow_OnClosed;
     }
 

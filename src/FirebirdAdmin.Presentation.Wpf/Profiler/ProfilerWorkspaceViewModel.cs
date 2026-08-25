@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Profiler;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.Profiler;
 
@@ -56,7 +57,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
 
         if (password is null)
         {
-            SetFailed("A senha da sessão não está disponível. Reconecte ou salve o perfil com senha lembrada.");
+            SetFailed(AppStrings.PasswordUnavailable);
             return;
         }
 
