@@ -140,7 +140,6 @@ public sealed partial class ShellViewModel : ObservableObject
     public string TransactionsFilterLabel => AppStrings.TransactionsFilterLabel;
     public string StartLabel => AppStrings.Start;
     public string PauseViewLabel => AppStrings.PauseView;
-    public string FollowLabel => AppStrings.Follow;
     public string StopLabel => AppStrings.Stop;
     public string ClearLabel => AppStrings.Clear;
     public string SearchLabel => AppStrings.Search;
@@ -499,9 +498,9 @@ public sealed partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(TraceStatus));
     }
 
-    public void ResumeProfilerFollow()
+    public void ToggleProfilerPauseResume()
     {
-        ProfilerWorkspace.ResumeFollow();
+        ProfilerWorkspace.TogglePauseResume();
         OnPropertyChanged(nameof(TraceStatus));
     }
 

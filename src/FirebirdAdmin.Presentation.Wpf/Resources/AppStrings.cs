@@ -44,6 +44,7 @@ public static class AppStrings
     public static string SaveProfile => GetString(nameof(SaveProfile));
     public static string Start => GetString(nameof(Start));
     public static string PauseView => GetString(nameof(PauseView));
+    public static string ResumeView => GetString(nameof(ResumeView));
     public static string Follow => GetString(nameof(Follow));
     public static string Stop => GetString(nameof(Stop));
     public static string Clear => GetString(nameof(Clear));

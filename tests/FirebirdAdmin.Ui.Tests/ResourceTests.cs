@@ -20,6 +20,7 @@ public sealed class ResourceTests
         AppStrings.DashboardOperationalTitle.Should().Be("Dashboard operacional");
         AppStrings.TransactionsTitle.Should().NotBeNullOrWhiteSpace();
         AppStrings.Start.Should().Be("Iniciar");
+        AppStrings.ResumeView.Should().Be("Continuar visualização");
         AppStrings.ColumnTransaction.Should().Be("Transaction");
         AppStrings.ColumnSeverity.Should().Be("Sev");
         AppStrings.TabEvidence.Should().Be("Evidências");

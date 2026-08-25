@@ -237,12 +237,7 @@ public partial class MainWindow
 
     private void PauseProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        viewModel.PauseProfilerView();
-    }
-
-    private void FollowProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
-    {
-        viewModel.ResumeProfilerFollow();
+        viewModel.ToggleProfilerPauseResume();
     }
 
     private void ClearProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)

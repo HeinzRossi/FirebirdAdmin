@@ -117,6 +117,9 @@
   <data name="PauseView" xml:space="preserve">
     <value>Pausar visualização</value>
   </data>
+  <data name="ResumeView" xml:space="preserve">
+    <value>Continuar visualização</value>
+  </data>
   <data name="Follow" xml:space="preserve">
     <value>Follow</value>
   </data>

@@ -3,6 +3,7 @@ using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Monitoring;
 using FirebirdAdmin.Application.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 using FluentAssertions;
 
 namespace FirebirdAdmin.Ui.Tests;
@@ -16,6 +17,23 @@ public sealed class ProfilerWorkspaceViewModelTests
 
         viewModel.State.Should().Be(ProfilerState.Disconnected);
         viewModel.Message.Should().Contain("Conecte");
+        viewModel.CanStart.Should().BeFalse();
+        viewModel.CanStop.Should().BeFalse();
+        viewModel.CanPauseOrResume.Should().BeFalse();
+        viewModel.PauseResumeLabel.Should().Be(AppStrings.PauseView);
+    }
+
+    [Fact]
+    public void SetReady_ShouldEnableStartOnly()
+    {
+        var viewModel = new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter());
+
+        viewModel.SetReady();
+
+        viewModel.State.Should().Be(ProfilerState.Ready);
+        viewModel.CanStart.Should().BeTrue();
+        viewModel.CanStop.Should().BeFalse();
+        viewModel.CanPauseOrResume.Should().BeFalse();
     }
 
     [Fact]
@@ -28,6 +46,10 @@ public sealed class ProfilerWorkspaceViewModelTests
         await WaitUntilAsync(() => viewModel.EventCount == 1);
 
         viewModel.State.Should().Be(ProfilerState.Running);
+        viewModel.CanStart.Should().BeFalse();
+        viewModel.CanStop.Should().BeTrue();
+        viewModel.CanPauseOrResume.Should().BeTrue();
+        viewModel.PauseResumeLabel.Should().Be(AppStrings.PauseView);
         viewModel.SelectedEvent.Should().NotBeNull();
         viewModel.SelectedSql.Should().Contain("select");
     }
@@ -47,11 +69,33 @@ public sealed class ProfilerWorkspaceViewModelTests
 
         viewModel.State.Should().Be(ProfilerState.PausedView);
         viewModel.EventCount.Should().Be(1);
+        viewModel.CanStart.Should().BeFalse();
+        viewModel.CanStop.Should().BeTrue();
+        viewModel.CanPauseOrResume.Should().BeTrue();
+        viewModel.PauseResumeLabel.Should().Be(AppStrings.ResumeView);
 
-        viewModel.ResumeFollow();
+        viewModel.TogglePauseResume();
 
+        viewModel.State.Should().Be(ProfilerState.Running);
         viewModel.EventCount.Should().Be(2);
         viewModel.SelectedEvent!.Sequence.Should().Be(2);
+        viewModel.PauseResumeLabel.Should().Be(AppStrings.PauseView);
+    }
+
+    [Fact]
+    public async Task StopAsync_ShouldEnableStartAndDisableStop()
+    {
+        var service = new FakeProfilerSessionService();
+        var viewModel = new ProfilerWorkspaceViewModel(service, new FakeHistoryWriter());
+
+        using var password = CredentialSecret.FromPlainText("masterkey");
+        await viewModel.StartAsync(CreateConnection(), password, CancellationToken.None);
+        await viewModel.StopAsync(CancellationToken.None);
+
+        viewModel.State.Should().Be(ProfilerState.Ready);
+        viewModel.CanStart.Should().BeTrue();
+        viewModel.CanStop.Should().BeFalse();
+        viewModel.CanPauseOrResume.Should().BeFalse();
     }
 
     [Fact]
