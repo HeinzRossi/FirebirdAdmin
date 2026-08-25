@@ -69,6 +69,18 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
 
     private static TraceEventType ResolveType(string block)
     {
+        if (block.Contains("EXECUTE_STATEMENT_FINISH", StringComparison.OrdinalIgnoreCase) ||
+            block.Contains("EXECUTE_STATEMENT_FINISHED", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraceEventType.StatementFinished;
+        }
+
+        if (block.Contains("EXECUTE_STATEMENT_START", StringComparison.OrdinalIgnoreCase) ||
+            block.Contains("PREPARE_STATEMENT", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraceEventType.StatementStarted;
+        }
+
         if (block.Contains("statement", StringComparison.OrdinalIgnoreCase) &&
             (block.Contains("finish", StringComparison.OrdinalIgnoreCase) ||
              block.Contains("finished", StringComparison.OrdinalIgnoreCase) ||
@@ -100,7 +112,21 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
         var statementIndex = Array.FindIndex(lines, line => line.Contains("statement", StringComparison.OrdinalIgnoreCase));
         if (statementIndex >= 0 && statementIndex + 1 < lines.Length)
         {
-            var candidate = lines[statementIndex + 1];
+            var candidate = FindSqlCandidate(lines, statementIndex + 1);
+            if (!string.IsNullOrWhiteSpace(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static string FindSqlCandidate(string[] lines, int startIndex)
+    {
+        for (var index = startIndex; index < lines.Length; index++)
+        {
+            var candidate = lines[index];
             if (candidate.Contains("select", StringComparison.OrdinalIgnoreCase) ||
                 candidate.Contains("insert", StringComparison.OrdinalIgnoreCase) ||
                 candidate.Contains("update", StringComparison.OrdinalIgnoreCase) ||
@@ -111,7 +137,7 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
             }
         }
 
-        return null;
+        return string.Empty;
     }
 
     private static string? ExtractPlan(string block)

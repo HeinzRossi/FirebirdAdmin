@@ -42,15 +42,15 @@ public sealed class TraceConfigurationBuilder : ITraceConfigurationBuilder
 
     private static string GetLegacyDatabaseTarget(string database)
     {
-        return GetDatabaseFileNameOrAlias(database);
+        return GetDatabaseFileNameOrAlias(database, usePathSuffixPattern: true);
     }
 
     private static string GetModernDatabaseTarget(string database)
     {
-        return GetDatabaseFileNameOrAlias(database);
+        return GetDatabaseFileNameOrAlias(database, usePathSuffixPattern: false);
     }
 
-    private static string GetDatabaseFileNameOrAlias(string database)
+    private static string GetDatabaseFileNameOrAlias(string database, bool usePathSuffixPattern)
     {
         if (string.IsNullOrWhiteSpace(database))
         {
@@ -65,7 +65,12 @@ public sealed class TraceConfigurationBuilder : ITraceConfigurationBuilder
 
         normalized = normalized.Replace('/', Path.DirectorySeparatorChar);
         var fileName = Path.GetFileName(normalized);
-        return string.IsNullOrWhiteSpace(fileName) ? "*" : fileName;
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return "*";
+        }
+
+        return usePathSuffixPattern ? $"%{fileName}" : fileName;
     }
 
     private static string BuildModern(string database, string threshold)

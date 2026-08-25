@@ -54,7 +54,7 @@ public sealed class TraceConfigurationBuilderTests
 
         var config = builder.Build(options, FirebirdServerVersion.Parse("2.5.9"));
 
-        config.Should().Contain("<database RICS.GDB>");
+        config.Should().Contain("<database %RICS.GDB>");
         config.Should().Contain("</database>");
         config.Should().NotContain(@"E:\DESENVOLVIMENTOGIT");
         config.Split(Environment.NewLine)[0].Should().NotContain(@"\");

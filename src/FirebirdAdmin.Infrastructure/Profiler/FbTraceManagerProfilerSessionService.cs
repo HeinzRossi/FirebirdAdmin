@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Channels;
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Profiler;
@@ -11,6 +12,8 @@ public sealed class FbTraceManagerProfilerSessionService(
     ITraceEventParser traceEventParser,
     ITraceProcessRunner traceProcessRunner) : IProfilerSessionService
 {
+    private static readonly Regex TraceSessionStartedRegex = new(@"Trace session ID\s+(?<id>\d+)\s+started", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly Channel<ProfilerEvent> channel = Channel.CreateUnbounded<ProfilerEvent>(
         new UnboundedChannelOptions { SingleReader = false, SingleWriter = true });
 
@@ -20,6 +23,10 @@ public sealed class FbTraceManagerProfilerSessionService(
     private long nextSequence = 1;
     private string? traceConfigPath;
     private string? passwordFetchPath;
+    private int? activeTraceSessionId;
+    private string? activeSessionName;
+    private ToolsetCandidate? activeTraceManager;
+    private ConnectionContext? activeConnection;
 
     public ProfilerState State { get; private set; } = ProfilerState.Disconnected;
 
@@ -49,6 +56,10 @@ public sealed class FbTraceManagerProfilerSessionService(
 
         sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         passwordFetchPath = null;
+        activeTraceManager = traceManager;
+        activeConnection = options.Connection;
+        activeSessionName = options.SessionName;
+        activeTraceSessionId = null;
 
         var passwordBytes = password?.CopyBytes() ?? [];
         try
@@ -78,7 +89,9 @@ public sealed class FbTraceManagerProfilerSessionService(
     {
         State = ProfilerState.Stopping;
 
-        if (sessionCts is not null)
+        var stopIssued = await TryStopActiveTraceSessionAsync(cancellationToken);
+
+        if (!stopIssued && sessionCts is not null)
         {
             await sessionCts.CancelAsync();
         }
@@ -87,13 +100,17 @@ public sealed class FbTraceManagerProfilerSessionService(
         {
             try
             {
-                await runningTask.WaitAsync(TimeSpan.FromSeconds(3), cancellationToken);
+                await runningTask.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
             }
             catch (TimeoutException)
             {
+                if (sessionCts is not null)
+                {
+                    await sessionCts.CancelAsync();
+                }
             }
         }
 
@@ -170,11 +187,12 @@ public sealed class FbTraceManagerProfilerSessionService(
         File.WriteAllText(
             attemptConfigPath,
             traceConfigurationBuilder.Build(options, dialect),
-            Encoding.UTF8);
+            Encoding.ASCII);
 
         var request = new TraceProcessRequest(
             traceManager.Path,
-            BuildArguments(options, attemptConfigPath));
+            BuildArguments(options, attemptConfigPath),
+            UseFileRedirection: true);
 
         var block = new StringBuilder();
         var bufferedOutput = new List<string>();
@@ -188,6 +206,8 @@ public sealed class FbTraceManagerProfilerSessionService(
 
         async Task OnAttemptOutputLineAsync(string line, CancellationToken token)
         {
+            CaptureTraceSessionId(line);
+
             if (IsTraceConfigurationParseError(line))
             {
                 AddBufferedLine(bufferedOutput, line);
@@ -261,6 +281,16 @@ public sealed class FbTraceManagerProfilerSessionService(
                 return new TraceAttemptResult(dialect, exitCode, failedByParse, bufferedOutput, bufferedErrors);
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            var failedByParse = HasTraceConfigurationParseError(bufferedOutput) || HasTraceConfigurationParseError(bufferedErrors);
+            if (!failedByParse && !WasAccepted())
+            {
+                await AcceptBufferedAttemptAsync(CancellationToken.None);
+            }
+
+            throw;
+        }
         finally
         {
             if (!suppressFinalFlush)
@@ -331,6 +361,120 @@ public sealed class FbTraceManagerProfilerSessionService(
         }
     }
 
+    private async Task<bool> TryStopActiveTraceSessionAsync(CancellationToken cancellationToken)
+    {
+        if (activeTraceManager is null || activeConnection is null)
+        {
+            return false;
+        }
+
+        var traceSessionId = activeTraceSessionId ?? await ResolveActiveTraceSessionIdAsync(activeTraceManager, activeConnection, cancellationToken);
+        if (traceSessionId is null)
+        {
+            return false;
+        }
+
+        using var stopCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        stopCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+        try
+        {
+            var request = new TraceProcessRequest(
+                activeTraceManager.Path,
+                BuildStopArguments(activeConnection, traceSessionId.Value));
+
+            _ = await traceProcessRunner.RunAsync(
+                request,
+                static (_, _) => Task.CompletedTask,
+                static (_, _) => Task.CompletedTask,
+                stopCts.Token);
+
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
+    private async Task<int?> ResolveActiveTraceSessionIdAsync(
+        ToolsetCandidate traceManager,
+        ConnectionContext connection,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(activeSessionName))
+        {
+            return null;
+        }
+
+        var lines = new List<string>();
+        using var listCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        listCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+        try
+        {
+            var request = new TraceProcessRequest(traceManager.Path, BuildListArguments(connection));
+            _ = await traceProcessRunner.RunAsync(
+                request,
+                (line, _) =>
+                {
+                    lines.Add(line);
+                    return Task.CompletedTask;
+                },
+                static (_, _) => Task.CompletedTask,
+                listCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+
+        return FindTraceSessionIdByName(lines, activeSessionName);
+    }
+
+    private static int? FindTraceSessionIdByName(IReadOnlyList<string> lines, string sessionName)
+    {
+        int? candidateId = null;
+        foreach (var line in lines)
+        {
+            var idMatch = Regex.Match(line, @"Session ID:\s*(?<id>\d+)", RegexOptions.IgnoreCase);
+            if (idMatch.Success && int.TryParse(idMatch.Groups["id"].Value, out var parsedId))
+            {
+                candidateId = parsedId;
+                continue;
+            }
+
+            var trimmed = line.Trim();
+            if (candidateId is not null &&
+                trimmed.StartsWith("name:", StringComparison.OrdinalIgnoreCase) &&
+                trimmed[5..].Trim().Equals(sessionName, StringComparison.OrdinalIgnoreCase))
+            {
+                return candidateId;
+            }
+        }
+
+        return null;
+    }
+
+    private void CaptureTraceSessionId(string line)
+    {
+        var match = TraceSessionStartedRegex.Match(line);
+        if (!match.Success || !int.TryParse(match.Groups["id"].Value, out var parsedId))
+        {
+            return;
+        }
+
+        activeTraceSessionId = parsedId;
+    }
+
     private static bool HasCompleteRecognizedTraceBlock(IReadOnlyList<string> lines)
     {
         if (lines.Count == 0 || !string.IsNullOrWhiteSpace(lines[^1]))
@@ -339,6 +483,8 @@ public sealed class FbTraceManagerProfilerSessionService(
         }
 
         return lines.Any(line =>
+            line.Contains("EXECUTE_STATEMENT", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("PREPARE_STATEMENT", StringComparison.OrdinalIgnoreCase) ||
             line.Contains("statement finished", StringComparison.OrdinalIgnoreCase) ||
             line.Contains("statement start", StringComparison.OrdinalIgnoreCase) ||
             line.Contains("statement prepare", StringComparison.OrdinalIgnoreCase));
@@ -376,11 +522,29 @@ public sealed class FbTraceManagerProfilerSessionService(
     {
         if (string.IsNullOrWhiteSpace(line))
         {
+            if (IsFirebird25StatementHeaderWithoutSql(block))
+            {
+                block.AppendLine();
+                return;
+            }
+
             await FlushBlockAsync(block, cancellationToken);
             return;
         }
 
         block.AppendLine(line);
+    }
+
+    private static bool IsFirebird25StatementHeaderWithoutSql(StringBuilder block)
+    {
+        if (block.Length == 0)
+        {
+            return false;
+        }
+
+        var text = block.ToString();
+        return text.Contains("EXECUTE_STATEMENT", StringComparison.OrdinalIgnoreCase) &&
+               !text.Contains("Statement ", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task FlushBlockAsync(StringBuilder block, CancellationToken cancellationToken)
@@ -490,6 +654,48 @@ public sealed class FbTraceManagerProfilerSessionService(
         return arguments;
     }
 
+    private IReadOnlyList<string> BuildStopArguments(ConnectionContext connection, int traceSessionId)
+    {
+        var arguments = new List<string>
+        {
+            "-se",
+            $"{connection.Host}:service_mgr",
+            "-stop",
+            "-id",
+            traceSessionId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "-user",
+            connection.UserName
+        };
+
+        if (passwordFetchPath is not null)
+        {
+            arguments.Add("-fetch");
+            arguments.Add(passwordFetchPath);
+        }
+
+        return arguments;
+    }
+
+    private IReadOnlyList<string> BuildListArguments(ConnectionContext connection)
+    {
+        var arguments = new List<string>
+        {
+            "-se",
+            $"{connection.Host}:service_mgr",
+            "-list",
+            "-user",
+            connection.UserName
+        };
+
+        if (passwordFetchPath is not null)
+        {
+            arguments.Add("-fetch");
+            arguments.Add(passwordFetchPath);
+        }
+
+        return arguments;
+    }
+
     private static TraceConfigurationDialect ResolveInitialDialect(
         ConnectionContext connection,
         ToolsetCandidate traceManager)
@@ -547,6 +753,10 @@ public sealed class FbTraceManagerProfilerSessionService(
         DeleteIfExists(passwordFetchPath);
         traceConfigPath = null;
         passwordFetchPath = null;
+        activeTraceSessionId = null;
+        activeSessionName = null;
+        activeTraceManager = null;
+        activeConnection = null;
     }
 
     private static void DeleteIfExists(string? path)

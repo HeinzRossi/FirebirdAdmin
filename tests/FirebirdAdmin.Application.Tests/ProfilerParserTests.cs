@@ -49,4 +49,28 @@ public sealed class ProfilerParserTests
         events[0].Type.Should().Be(TraceEventType.Unparsed);
         events[0].RawTrace.Should().Contain("linha truncada");
     }
+
+    [Fact]
+    public void ParseBlock_ShouldNormalizeFirebird25ExecuteStatementFinish()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_FINISH
+                             C:\DELPHI\COMPACTADOR\2019-05-29\NTCS.GDB (ATT_50014, SYSDBA:NONE, NONE, XNET:HEINZ)
+                             	(TRA_90013, CONCURRENCY | WAIT | READ_WRITE)
+                             
+                             Statement 33:
+                             -------------------------------------------------------------------------------
+                             select current_timestamp from rdb$database
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             PLAN (RDB$DATABASE NATURAL)
+                             0 ms, 1 read(s), 0 write(s), 1 fetch(es)
+                             """;
+
+        var events = parser.ParseBlock(block, 20, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].Type.Should().Be(TraceEventType.StatementFinished);
+        events[0].Sql.Should().Be("select current_timestamp from rdb$database");
+    }
 }
