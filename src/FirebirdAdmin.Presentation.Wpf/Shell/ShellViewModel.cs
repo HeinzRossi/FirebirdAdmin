@@ -145,9 +145,7 @@ public sealed partial class ShellViewModel : ObservableObject
     public string ResolveLabel => AppStrings.Resolve;
     public string ReopenLabel => AppStrings.Reopen;
     public string LoadLabel => AppStrings.Load;
-    public string ObjectLabel => AppStrings.Object;
-    public string BackLabel => AppStrings.Back;
-    public string ForwardLabel => AppStrings.Forward;
+    public string RefreshObjectLabel => AppStrings.RefreshObject;
     public string MarkStaleLabel => AppStrings.MarkStale;
     public string ConfirmLabel => AppStrings.Confirm;
     public string ValidateLabel => AppStrings.Validate;

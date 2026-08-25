@@ -29,6 +29,25 @@ public sealed class ResourceTests
         AppStrings.ThemeLight.Should().Be("Claro");
         AppStrings.ThemeDark.Should().Be("Escuro");
         AppStrings.ThemeToggleFormat.Should().Contain("{0}");
+        AppStrings.RefreshObject.Should().Be("Atualizar objeto");
+        AppStrings.HistoryDataKindTraceEvents.Should().Be("Eventos Trace");
+        AppStrings.HistoryDataKindMonitoringSnapshots.Should().Be("Snapshots de monitoramento");
+        AppStrings.MaintenanceOperationValidation.Should().Be("Validação");
+        AppStrings.MaintenanceSourceDatabase.Should().Be("Banco");
+        AppStrings.MaintenanceSourceBackup.Should().Be("Backup");
+        AppStrings.MaintenanceTargetBackup.Should().Be("Arquivo backup");
+        AppStrings.MaintenanceTargetNewDatabase.Should().Be("Novo banco");
+        AppStrings.MaintenanceTargetNotUsed.Should().Be("Destino não usado");
+        AppStrings.FilterAllStatus.Should().Be("Todos");
+        AppStrings.FilterStatusActive.Should().Be("Ativos");
+        AppStrings.FilterStatusAcknowledged.Should().Be("Reconhecidos");
+        AppStrings.FilterStatusResolved.Should().Be("Resolvidos");
+        AppStrings.FilterAllSeverities.Should().Be("Todas");
+        AppStrings.FilterSeverityCritical.Should().Be("Crítica");
+        AppStrings.FilterSeverityHigh.Should().Be("Alta");
+        AppStrings.FilterSeverityMedium.Should().Be("Média");
+        AppStrings.FilterSeverityLow.Should().Be("Baixa");
+        AppStrings.FilterSeverityInfo.Should().Be("Info");
         AppStrings.MaintenanceProgressWaiting.Should().Contain("Aguardando");
         AppStrings.MaintenanceProgressRunning.Should().Contain("execução");
         AppStrings.MaintenanceProgressCompleted.Should().Contain("concluída");
@@ -36,5 +55,12 @@ public sealed class ResourceTests
         AppStrings.MaintenanceProgressFailed.Should().Contain("falhou");
         AppStrings.KeyboardHelp.Should().Contain("Ctrl+1");
         AppStrings.WorkspacePlaceholder.Should().Contain("Conecte");
+    }
+
+    [Fact]
+    public void FilterOption_ShouldRenderLabelOnly()
+    {
+        new FirebirdAdmin.Presentation.Wpf.Diagnostics.FilterOption("Sweep", "Sweep").ToString().Should().Be("Sweep");
+        new FirebirdAdmin.Presentation.Wpf.Diagnostics.FilterOption("Validação", "Validation").ToString().Should().Be("Validação");
     }
 }

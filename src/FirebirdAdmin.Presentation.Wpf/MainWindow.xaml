@@ -198,7 +198,7 @@
                     <TextBlock Grid.Row="0" Text="{x:Static res:AppStrings.History}" Style="{DynamicResource Text.EmptyStateTitle}"/>
                 </Grid>
                 <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
-                    <ComboBox Text="{Binding DataKind, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Tipo de histórico" TabIndex="30"/>
+                    <ComboBox ItemsSource="{Binding DataKindOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding DataKind, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" MinWidth="190" AutomationProperties.Name="Tipo de histórico" TabIndex="30"/>
                     <TextBox Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" AutomationProperties.Name="Filtro de usuário do histórico" TabIndex="31"/>
                     <TextBox Text="{Binding SqlText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Filtro SQL do histórico" TabIndex="32"/>
                     <Button Content="{Binding DataContext.SearchLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="SearchHistoryButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Pesquisar histórico" TabIndex="33"/>
@@ -234,8 +234,8 @@
                     <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Text="{Binding Message}" Style="{DynamicResource Text.EmptyStateBody}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </Grid>
                 <WrapPanel Grid.Row="1" Style="{DynamicResource Workspace.Toolbar}">
-                    <ComboBox Text="{Binding StatusFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de status de alerta" TabIndex="40"/>
-                    <ComboBox Text="{Binding SeverityFilter, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de severidade de alerta" TabIndex="41"/>
+                    <ComboBox ItemsSource="{Binding StatusFilterOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding StatusFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de status de alerta" TabIndex="40"/>
+                    <ComboBox ItemsSource="{Binding SeverityFilterOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding SeverityFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Filtro de severidade de alerta" TabIndex="41"/>
                     <TextBlock Text="{Binding DataContext.AlertsInstruction, RelativeSource={RelativeSource AncestorType=Window}}" Style="{DynamicResource Text.EmptyStateBody}" VerticalAlignment="Center" Margin="0,0,8,8" TextTrimming="CharacterEllipsis" MaxWidth="320"/>
                     <Button Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshAlertsButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Atualizar alertas" TabIndex="43"/>
                     <Button Content="{Binding DataContext.AcknowledgeLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="AcknowledgeAlertButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="98" AutomationProperties.Name="Reconhecer alerta" TabIndex="44"/>
@@ -277,9 +277,7 @@
                     <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="260" AutomationProperties.Name="Busca de metadata" TabIndex="50"/>
                     <Button Content="{Binding DataContext.LoadLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="LoadMetadataCatalogButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Carregar catálogo de metadata" TabIndex="51"/>
                     <Button Content="{Binding DataContext.RefreshLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataCatalogButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Atualizar catálogo de metadata" TabIndex="52"/>
-                    <Button Content="{Binding DataContext.ObjectLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataObjectButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Atualizar objeto de metadata" TabIndex="53"/>
-                    <Button Content="{Binding DataContext.BackLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MetadataBackButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Voltar metadata" TabIndex="54"/>
-                    <Button Content="{Binding DataContext.ForwardLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="MetadataForwardButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Avançar metadata" TabIndex="55"/>
+                    <Button Content="{Binding DataContext.RefreshObjectLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMetadataObjectButton_OnClick" Style="{DynamicResource Button.Toolbar}" MinWidth="118" AutomationProperties.Name="Atualizar objeto de metadata" TabIndex="53"/>
                 </WrapPanel>
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Objects}" SelectedItem="{Binding SelectedObject}" AutomationProperties.Name="Objetos de metadata" TabIndex="56">
                     <DataGrid.Columns>
@@ -366,9 +364,11 @@
                     </Grid>
                 </Border>
                 <WrapPanel Grid.Row="2" Style="{DynamicResource Workspace.Toolbar}">
-                    <ComboBox Text="{Binding OperationType, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Style="{DynamicResource ComboBox.Toolbar}" AutomationProperties.Name="Tipo de operação de manutenção" TabIndex="70"><ComboBoxItem Content="{x:Static res:AppStrings.MaintenanceOperationBackup}"/><ComboBoxItem Content="{x:Static res:AppStrings.MaintenanceOperationRestore}"/><ComboBoxItem Content="{x:Static res:AppStrings.MaintenanceOperationValidation}"/><ComboBoxItem Content="{x:Static res:AppStrings.MaintenanceOperationSweep}"/></ComboBox>
+                    <ComboBox ItemsSource="{Binding OperationTypeOptions}" DisplayMemberPath="Label" SelectedValuePath="Value" SelectedValue="{Binding OperationType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource ComboBox.Toolbar}" MinWidth="132" AutomationProperties.Name="Tipo de operação de manutenção" TabIndex="70"/>
+                    <TextBlock Text="{Binding SourcePathLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center" Margin="0,0,6,8"/>
                     <TextBox Text="{Binding SourcePath, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="220" AutomationProperties.Name="Caminho de origem da manutenção" TabIndex="71"/>
-                    <TextBox Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="220" AutomationProperties.Name="Caminho de destino da manutenção" TabIndex="72"/>
+                    <TextBlock Text="{Binding TargetPathLabel}" Style="{DynamicResource Text.StatusBar}" VerticalAlignment="Center" Margin="0,0,6,8"/>
+                    <TextBox Text="{Binding TargetPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsTargetPathEnabled}" Style="{DynamicResource TextBox.Toolbar}" MinWidth="220" AutomationProperties.Name="Caminho de destino da manutenção" TabIndex="72"/>
                     <CheckBox Content="{Binding DataContext.ConfirmLabel, RelativeSource={RelativeSource AncestorType=Window}}" IsChecked="{Binding Confirmed}" Margin="0,0,8,8" AutomationProperties.Name="Confirmar operação de manutenção" TabIndex="73"/>
                     <Button Content="{Binding DataContext.ValidateLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ValidateMaintenanceButton_OnClick" Style="{DynamicResource Button.Toolbar}" AutomationProperties.Name="Validar manutenção" TabIndex="74"/>
                     <Button Content="{Binding DataContext.ExecuteLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="ExecuteMaintenanceButton_OnClick" IsEnabled="{Binding CanExecute}" Style="{DynamicResource Button.Primary}" AutomationProperties.Name="Executar manutenção" TabIndex="75"/>
@@ -380,7 +380,7 @@
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding ToolsetText}" Style="{DynamicResource Text.StatusBar}" TextTrimming="CharacterEllipsis"/>
                     <Button Grid.Row="0" Grid.Column="1" Content="{Binding DataContext.UpdateHistoryLabel, RelativeSource={RelativeSource AncestorType=Window}}" Click="RefreshMaintenanceHistoryButton_OnClick" HorizontalAlignment="Right" MinWidth="126" AutomationProperties.Name="Atualizar histórico de manutenção"/>
                     <TextBox Grid.Row="1" Grid.Column="0" Text="{Binding PreflightText, Mode=OneWay}" Style="{DynamicResource TextBox.Details}" Margin="0,8,8,0" AutomationProperties.Name="Resultado do preflight"/>
-                    <ListBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Logs}" Margin="8,8,0,0" AutomationProperties.Name="Log de manutenção"/>
+                    <ListBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding Logs}" Style="{DynamicResource ListBox.Log}" Margin="8,8,0,0" AutomationProperties.Name="Log de manutenção"/>
                 </Grid>
                 <Grid Grid.Row="4" Margin="0,8,0,0">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="260"/></Grid.ColumnDefinitions>

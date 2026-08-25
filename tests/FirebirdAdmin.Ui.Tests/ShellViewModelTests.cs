@@ -47,8 +47,8 @@ public sealed class ShellViewModelTests
         viewModel.ExitLabel.Should().Be(AppStrings.Exit);
         viewModel.AboutLabel.Should().Be(AppStrings.About);
         viewModel.IsAboutOpen.Should().BeFalse();
-        viewModel.CurrentTheme.Should().Be(AppTheme.Light);
-        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeLight);
+        viewModel.CurrentTheme.Should().Be(AppTheme.Dark);
+        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeDark);
         viewModel.TitleBarVersionText.Should().NotBeNullOrWhiteSpace();
     }
 
@@ -189,9 +189,9 @@ public sealed class ShellViewModelTests
 
         viewModel.ToggleTheme();
 
-        viewModel.CurrentTheme.Should().Be(AppTheme.Dark);
-        themeService.CurrentTheme.Should().Be(AppTheme.Dark);
-        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeDark);
+        viewModel.CurrentTheme.Should().Be(AppTheme.Light);
+        themeService.CurrentTheme.Should().Be(AppTheme.Light);
+        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeLight);
     }
 
     [Fact]
@@ -267,7 +267,7 @@ public sealed class ShellViewModelTests
 
     private sealed class FakeThemeService : IThemeService
     {
-        public AppTheme CurrentTheme { get; private set; } = AppTheme.Light;
+        public AppTheme CurrentTheme { get; private set; } = AppTheme.Dark;
 
         public void Apply(AppTheme theme)
         {

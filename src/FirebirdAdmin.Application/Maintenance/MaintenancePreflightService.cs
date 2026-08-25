@@ -10,7 +10,7 @@ public sealed class MaintenancePreflightService : IMaintenancePreflightService
         var warnings = new List<string>();
         var review = new List<string>
         {
-            $"Operação: {request.Type}",
+            $"Operação: {FormatOperationType(request.Type)}",
             $"Origem: {request.Source}"
         };
 
@@ -51,7 +51,7 @@ public sealed class MaintenancePreflightService : IMaintenancePreflightService
             }
             else if (File.Exists(request.Target))
             {
-                errors.Add("Restore overwrite bloqueado nesta sprint. Escolha um novo banco.");
+                errors.Add("Restore não sobrescreve banco existente. Informe um caminho de novo banco no campo Destino.");
             }
         }
 
@@ -94,5 +94,17 @@ public sealed class MaintenancePreflightService : IMaintenancePreflightService
                 errors.Add($"Sem permissão de escrita em {directory}: {ex.Message}");
             }
         }
+    }
+
+    private static string FormatOperationType(MaintenanceOperationType type)
+    {
+        return type switch
+        {
+            MaintenanceOperationType.Backup => "Backup",
+            MaintenanceOperationType.Restore => "Restore",
+            MaintenanceOperationType.Validation => "Validação",
+            MaintenanceOperationType.Sweep => "Sweep",
+            _ => type.ToString()
+        };
     }
 }

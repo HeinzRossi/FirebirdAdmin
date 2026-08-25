@@ -21,8 +21,4 @@
     <PackageReference Include="Serilog.Extensions.Hosting" />
     <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
-
-  <ItemGroup>
-    <SplashScreen Include="..\FirebirdAdmin.Presentation.Wpf\Assets\Branding\FirebirdAdmin_Logo.png" Link="FirebirdAdmin_Logo.png" />
-  </ItemGroup>
 </Project>

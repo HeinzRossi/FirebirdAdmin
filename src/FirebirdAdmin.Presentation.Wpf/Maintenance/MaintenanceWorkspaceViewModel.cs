@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.Maintenance;
+using FirebirdAdmin.Presentation.Wpf.Diagnostics;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.Maintenance;
@@ -59,10 +61,34 @@ public sealed partial class MaintenanceWorkspaceViewModel(
 
     public ObservableCollection<string> Logs { get; } = [];
     public ObservableCollection<MaintenanceOperationRowViewModel> History { get; } = [];
+    public IReadOnlyList<FilterOption> OperationTypeOptions { get; } =
+    [
+        new(AppStrings.MaintenanceOperationBackup, MaintenanceOperationType.Backup.ToString()),
+        new(AppStrings.MaintenanceOperationRestore, MaintenanceOperationType.Restore.ToString()),
+        new(AppStrings.MaintenanceOperationValidation, MaintenanceOperationType.Validation.ToString()),
+        new(AppStrings.MaintenanceOperationSweep, MaintenanceOperationType.Sweep.ToString())
+    ];
+
     public string ToolsetText => activeConnection is null
         ? "Sem conexão."
         : string.Join(" | ", activeConnection.Toolset.Candidates.Where(candidate => candidate.IsAvailable).Select(candidate => $"{candidate.Kind}: {candidate.Path}"));
     public bool CanExecute => activeConnection is not null && Confirmed && !IsRunning;
+    public bool IsTargetPathEnabled => ParseOperationType() is MaintenanceOperationType.Backup or MaintenanceOperationType.Restore;
+    public string SourcePathLabel => ParseOperationType() switch
+    {
+        MaintenanceOperationType.Restore => AppStrings.MaintenanceSourceBackup,
+        MaintenanceOperationType.Validation => AppStrings.MaintenanceSourceDatabase,
+        MaintenanceOperationType.Sweep => AppStrings.MaintenanceSourceDatabase,
+        _ => AppStrings.MaintenanceSourceDatabase
+    };
+
+    public string TargetPathLabel => ParseOperationType() switch
+    {
+        MaintenanceOperationType.Restore => AppStrings.MaintenanceTargetNewDatabase,
+        MaintenanceOperationType.Backup => AppStrings.MaintenanceTargetBackup,
+        _ => AppStrings.MaintenanceTargetNotUsed
+    };
+
     public string SelectedHistoryDetails => SelectedHistory is null
         ? "-"
         : $"{SelectedHistory.Type} {SelectedHistory.Status}{Environment.NewLine}{SelectedHistory.Source}{Environment.NewLine}{SelectedHistory.Target}{Environment.NewLine}{SelectedHistory.Message}";
@@ -72,11 +98,7 @@ public sealed partial class MaintenanceWorkspaceViewModel(
         activeConnection = connection;
         password?.Dispose();
         password = credential is null ? null : CredentialSecret.FromBytes(credential.CopyBytes());
-        SourcePath = connection.Database;
-        if (string.IsNullOrWhiteSpace(TargetPath))
-        {
-            TargetPath = $"{connection.Database}.fbk";
-        }
+        ApplyOperationDefaults(force: true);
 
         Message = "Manutenção pronta para preflight.";
         OnPropertyChanged(nameof(ToolsetText));
@@ -149,7 +171,7 @@ public sealed partial class MaintenanceWorkspaceViewModel(
         {
             var result = await maintenanceService.ExecuteAsync(request, password, executionCts.Token);
             Message = result.Operation.Message;
-            Stage = result.Operation.Status.ToString();
+            Stage = FormatStatus(result.Operation.Status);
             ApplyFinalProgressState(result.Operation.Status);
             await LoadHistoryAsync(CancellationToken.None);
         }
@@ -213,6 +235,15 @@ public sealed partial class MaintenanceWorkspaceViewModel(
         OnPropertyChanged(nameof(CanExecute));
     }
 
+    partial void OnOperationTypeChanged(string value)
+    {
+        ApplyOperationDefaults(force: false);
+        OnPropertyChanged(nameof(IsTargetPathEnabled));
+        OnPropertyChanged(nameof(SourcePathLabel));
+        OnPropertyChanged(nameof(TargetPathLabel));
+        OnPropertyChanged(nameof(CanExecute));
+    }
+
     partial void OnSelectedHistoryChanged(MaintenanceOperationRowViewModel? value)
     {
         OnPropertyChanged(nameof(SelectedHistoryDetails));
@@ -225,7 +256,7 @@ public sealed partial class MaintenanceWorkspaceViewModel(
             return null;
         }
 
-        return Enum.Parse<MaintenanceOperationType>(OperationType) switch
+        return ParseOperationType() switch
         {
             MaintenanceOperationType.Backup => new BackupRequest(activeConnection, SourcePath, TargetPath, Confirmed),
             MaintenanceOperationType.Restore => new RestoreRequest(activeConnection, SourcePath, TargetPath, Confirmed),
@@ -242,6 +273,71 @@ public sealed partial class MaintenanceWorkspaceViewModel(
             result.Errors.Select(error => $"ERRO: {error}")
                 .Concat(result.Warnings.Select(warning => $"AVISO: {warning}"))
                 .Concat(result.ReviewLines.Select(line => $"REVISÃO: {line}")));
+    }
+
+    private MaintenanceOperationType ParseOperationType()
+    {
+        return Enum.TryParse<MaintenanceOperationType>(OperationType, ignoreCase: true, out var type)
+            ? type
+            : MaintenanceOperationType.Backup;
+    }
+
+    private void ApplyOperationDefaults(bool force)
+    {
+        if (activeConnection is null)
+        {
+            return;
+        }
+
+        var databasePath = activeConnection.Database;
+        var backupPath = $"{databasePath}.fbk";
+        switch (ParseOperationType())
+        {
+            case MaintenanceOperationType.Restore:
+                SourcePath = force || string.IsNullOrWhiteSpace(SourcePath) || !SourcePath.EndsWith(".fbk", StringComparison.OrdinalIgnoreCase)
+                    ? backupPath
+                    : SourcePath;
+                TargetPath = CreateRestoreTargetPath(databasePath);
+                break;
+            case MaintenanceOperationType.Validation:
+            case MaintenanceOperationType.Sweep:
+                SourcePath = databasePath;
+                TargetPath = string.Empty;
+                break;
+            default:
+                SourcePath = databasePath;
+                TargetPath = backupPath;
+                break;
+        }
+    }
+
+    private static string CreateRestoreTargetPath(string databasePath)
+    {
+        var directory = Path.GetDirectoryName(databasePath);
+        var name = Path.GetFileNameWithoutExtension(databasePath);
+        var candidateDirectory = string.IsNullOrWhiteSpace(directory) ? string.Empty : directory;
+        var candidate = Path.Combine(candidateDirectory, $"{name}-restored.fdb");
+        var index = 1;
+        while (File.Exists(candidate))
+        {
+            candidate = Path.Combine(candidateDirectory, $"{name}-restored-{index}.fdb");
+            index++;
+        }
+
+        return candidate;
+    }
+
+    private static string FormatStatus(MaintenanceOperationStatus status)
+    {
+        return status switch
+        {
+            MaintenanceOperationStatus.Pending => "Pendente",
+            MaintenanceOperationStatus.Running => "Executando",
+            MaintenanceOperationStatus.Succeeded => "Concluída",
+            MaintenanceOperationStatus.Failed => "Falhou",
+            MaintenanceOperationStatus.Cancelled => "Cancelada",
+            _ => status.ToString()
+        };
     }
 
     public void Dispose()

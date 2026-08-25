@@ -63,6 +63,17 @@ public static class AppStrings
     public static string AboutDescription => GetString(nameof(AboutDescription));
     public static string AboutVersionFormat => GetString(nameof(AboutVersionFormat));
     public static string AboutClose => GetString(nameof(AboutClose));
+    public static string RefreshObject => GetString(nameof(RefreshObject));
+    public static string FilterAllStatus => GetString(nameof(FilterAllStatus));
+    public static string FilterStatusActive => GetString(nameof(FilterStatusActive));
+    public static string FilterStatusAcknowledged => GetString(nameof(FilterStatusAcknowledged));
+    public static string FilterStatusResolved => GetString(nameof(FilterStatusResolved));
+    public static string FilterAllSeverities => GetString(nameof(FilterAllSeverities));
+    public static string FilterSeverityCritical => GetString(nameof(FilterSeverityCritical));
+    public static string FilterSeverityHigh => GetString(nameof(FilterSeverityHigh));
+    public static string FilterSeverityMedium => GetString(nameof(FilterSeverityMedium));
+    public static string FilterSeverityLow => GetString(nameof(FilterSeverityLow));
+    public static string FilterSeverityInfo => GetString(nameof(FilterSeverityInfo));
     public static string Cancel => GetString(nameof(Cancel));
     public static string UpdateHistory => GetString(nameof(UpdateHistory));
     public static string AlertsInstruction => GetString(nameof(AlertsInstruction));
@@ -142,6 +153,11 @@ public static class AppStrings
     public static string MaintenanceOperationRestore => GetString(nameof(MaintenanceOperationRestore));
     public static string MaintenanceOperationValidation => GetString(nameof(MaintenanceOperationValidation));
     public static string MaintenanceOperationSweep => GetString(nameof(MaintenanceOperationSweep));
+    public static string MaintenanceSourceDatabase => GetString(nameof(MaintenanceSourceDatabase));
+    public static string MaintenanceSourceBackup => GetString(nameof(MaintenanceSourceBackup));
+    public static string MaintenanceTargetBackup => GetString(nameof(MaintenanceTargetBackup));
+    public static string MaintenanceTargetNewDatabase => GetString(nameof(MaintenanceTargetNewDatabase));
+    public static string MaintenanceTargetNotUsed => GetString(nameof(MaintenanceTargetNotUsed));
     public static string MaintenanceProgressWaiting => GetString(nameof(MaintenanceProgressWaiting));
     public static string MaintenanceProgressRunning => GetString(nameof(MaintenanceProgressRunning));
     public static string MaintenanceProgressCompleted => GetString(nameof(MaintenanceProgressCompleted));
@@ -150,6 +166,8 @@ public static class AppStrings
     public static string ThemeLight => GetString(nameof(ThemeLight));
     public static string ThemeDark => GetString(nameof(ThemeDark));
     public static string ThemeToggleFormat => GetString(nameof(ThemeToggleFormat));
+    public static string HistoryDataKindTraceEvents => GetString(nameof(HistoryDataKindTraceEvents));
+    public static string HistoryDataKindMonitoringSnapshots => GetString(nameof(HistoryDataKindMonitoringSnapshots));
 
     private static string GetString(string name)
     {

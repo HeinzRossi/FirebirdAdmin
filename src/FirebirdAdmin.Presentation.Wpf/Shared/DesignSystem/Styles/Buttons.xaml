@@ -100,6 +100,10 @@
     </Style>
 
     <Style TargetType="CheckBox">
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Input}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Subtle}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Foreground" Value="{DynamicResource Brush.App.Foreground}"/>
         <Setter Property="FocusVisualStyle">
@@ -113,6 +117,52 @@
                         </Setter.Value>
                     </Setter>
                 </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <Grid SnapsToDevicePixels="True">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="Box"
+                                Width="16"
+                                Height="16"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1"
+                                VerticalAlignment="Center">
+                            <Path x:Name="CheckMark"
+                                  Data="M 2 8 L 6 12 L 14 3"
+                                  Stroke="{DynamicResource Brush.Text.OnAccent}"
+                                  StrokeThickness="2"
+                                  StrokeStartLineCap="Square"
+                                  StrokeEndLineCap="Square"
+                                  Visibility="Collapsed"/>
+                        </Border>
+                        <ContentPresenter Grid.Column="1"
+                                          Margin="7,0,0,0"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          RecognizesAccessKey="True"/>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Border.Strong}"/>
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.Surface.Hover}"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Brush.Accent}"/>
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Brush.Accent.Strong}"/>
+                            <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}"/>
+                            <Setter TargetName="Box" Property="Opacity" Value="0.55"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>

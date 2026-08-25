@@ -228,16 +228,6 @@ public partial class MainWindow
         await viewModel.MetadataExplorer.RefreshSelectedAsync();
     }
 
-    private async void MetadataBackButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
-    {
-        await viewModel.MetadataExplorer.BackAsync();
-    }
-
-    private async void MetadataForwardButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
-    {
-        await viewModel.MetadataExplorer.ForwardAsync();
-    }
-
     private async void ValidateMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         await viewModel.MaintenanceWorkspace.ValidateAsync();

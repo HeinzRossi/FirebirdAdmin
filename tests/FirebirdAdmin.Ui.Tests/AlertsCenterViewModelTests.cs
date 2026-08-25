@@ -13,6 +13,10 @@ public sealed class AlertsCenterViewModelTests
 
         viewModel.Alerts.Should().BeEmpty();
         viewModel.Message.Should().Contain("Central");
+        viewModel.StatusFilterOptions.Should().Contain(option => option.Label == "Todos" && option.Value == string.Empty);
+        viewModel.StatusFilterOptions.Should().Contain(option => option.Label == "Ativos" && option.Value == AlertStatus.Active.ToString());
+        viewModel.SeverityFilterOptions.Should().Contain(option => option.Label == "Todas" && option.Value == string.Empty);
+        viewModel.SeverityFilterOptions.Should().Contain(option => option.Label == "Crítica" && option.Value == DiagnosticSeverity.Critical.ToString());
     }
 
     [Fact]
@@ -47,6 +51,39 @@ public sealed class AlertsCenterViewModelTests
         viewModel.Alerts.Single().Alert.Status.Should().Be(AlertStatus.Resolved);
     }
 
+    [Fact]
+    public async Task LoadAsync_ShouldFilterByStatus()
+    {
+        var store = new FakeAlertStore();
+        store.Seed(
+            CreateAlert(AlertStatus.Active, DiagnosticSeverity.Low),
+            CreateAlert(AlertStatus.Acknowledged, DiagnosticSeverity.Medium),
+            CreateAlert(AlertStatus.Resolved, DiagnosticSeverity.High));
+        var viewModel = new AlertsCenterViewModel(store);
+
+        viewModel.StatusFilter = AlertStatus.Acknowledged.ToString();
+        await viewModel.LoadAsync();
+
+        viewModel.Alerts.Should().ContainSingle();
+        viewModel.Alerts.Single().Alert.Status.Should().Be(AlertStatus.Acknowledged);
+    }
+
+    [Fact]
+    public async Task LoadAsync_ShouldFilterBySeverity()
+    {
+        var store = new FakeAlertStore();
+        store.Seed(
+            CreateAlert(AlertStatus.Active, DiagnosticSeverity.Low),
+            CreateAlert(AlertStatus.Active, DiagnosticSeverity.Critical));
+        var viewModel = new AlertsCenterViewModel(store);
+
+        viewModel.SeverityFilter = DiagnosticSeverity.Critical.ToString();
+        await viewModel.LoadAsync();
+
+        viewModel.Alerts.Should().ContainSingle();
+        viewModel.Alerts.Single().Alert.Severity.Should().Be(DiagnosticSeverity.Critical);
+    }
+
     private static DiagnosticResult CreateResult()
     {
         return new DiagnosticResult(
@@ -60,10 +97,31 @@ public sealed class AlertsCenterViewModelTests
             [new DiagnosticEvidence("Value", 1)]);
     }
 
+    private static Alert CreateAlert(AlertStatus status, DiagnosticSeverity severity)
+    {
+        return new Alert(
+            Guid.NewGuid(),
+            "RULE",
+            Guid.NewGuid().ToString("N"),
+            severity,
+            status,
+            "msg",
+            new DiagnosticTarget("Target", Guid.NewGuid().ToString("N")),
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            1,
+            [new DiagnosticEvidence("Value", 1)]);
+    }
+
     private sealed class FakeAlertStore : IAlertStore
     {
         private readonly AlertCorrelator correlator = new();
         private readonly List<Alert> alerts = [];
+
+        public void Seed(params Alert[] seedAlerts)
+        {
+            alerts.AddRange(seedAlerts);
+        }
 
         public Task<Alert> UpsertAsync(DiagnosticResult result, CancellationToken cancellationToken)
         {

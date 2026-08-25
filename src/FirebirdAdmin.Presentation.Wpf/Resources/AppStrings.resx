@@ -388,10 +388,25 @@
     <value>Restore</value>
   </data>
   <data name="MaintenanceOperationValidation" xml:space="preserve">
-    <value>Validation</value>
+    <value>Validação</value>
   </data>
   <data name="MaintenanceOperationSweep" xml:space="preserve">
     <value>Sweep</value>
+  </data>
+  <data name="MaintenanceSourceDatabase" xml:space="preserve">
+    <value>Banco</value>
+  </data>
+  <data name="MaintenanceSourceBackup" xml:space="preserve">
+    <value>Backup</value>
+  </data>
+  <data name="MaintenanceTargetBackup" xml:space="preserve">
+    <value>Arquivo backup</value>
+  </data>
+  <data name="MaintenanceTargetNewDatabase" xml:space="preserve">
+    <value>Novo banco</value>
+  </data>
+  <data name="MaintenanceTargetNotUsed" xml:space="preserve">
+    <value>Destino não usado</value>
   </data>
   <data name="MaintenanceProgressWaiting" xml:space="preserve">
     <value>Aguardando operação.</value>
@@ -417,6 +432,12 @@
   <data name="ThemeToggleFormat" xml:space="preserve">
     <value>Tema: {0}</value>
   </data>
+  <data name="HistoryDataKindTraceEvents" xml:space="preserve">
+    <value>Eventos Trace</value>
+  </data>
+  <data name="HistoryDataKindMonitoringSnapshots" xml:space="preserve">
+    <value>Snapshots de monitoramento</value>
+  </data>
   <data name="Exit" xml:space="preserve">
     <value>Sair</value>
   </data>
@@ -434,5 +455,38 @@
   </data>
   <data name="AboutClose" xml:space="preserve">
     <value>Fechar</value>
+  </data>
+  <data name="RefreshObject" xml:space="preserve">
+    <value>Atualizar objeto</value>
+  </data>
+  <data name="FilterAllStatus" xml:space="preserve">
+    <value>Todos</value>
+  </data>
+  <data name="FilterStatusActive" xml:space="preserve">
+    <value>Ativos</value>
+  </data>
+  <data name="FilterStatusAcknowledged" xml:space="preserve">
+    <value>Reconhecidos</value>
+  </data>
+  <data name="FilterStatusResolved" xml:space="preserve">
+    <value>Resolvidos</value>
+  </data>
+  <data name="FilterAllSeverities" xml:space="preserve">
+    <value>Todas</value>
+  </data>
+  <data name="FilterSeverityCritical" xml:space="preserve">
+    <value>Crítica</value>
+  </data>
+  <data name="FilterSeverityHigh" xml:space="preserve">
+    <value>Alta</value>
+  </data>
+  <data name="FilterSeverityMedium" xml:space="preserve">
+    <value>Média</value>
+  </data>
+  <data name="FilterSeverityLow" xml:space="preserve">
+    <value>Baixa</value>
+  </data>
+  <data name="FilterSeverityInfo" xml:space="preserve">
+    <value>Info</value>
   </data>
 </root>

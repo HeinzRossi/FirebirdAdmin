@@ -19,6 +19,8 @@ public sealed class MaintenanceWorkspaceViewModelTests
         viewModel.IsProgressIndeterminate.Should().BeFalse();
         viewModel.ProgressValue.Should().Be(0);
         viewModel.ProgressStatusText.Should().Be(AppStrings.MaintenanceProgressWaiting);
+        viewModel.OperationTypeOptions.Should().Contain(option => option.Label == "Validação" && option.Value == MaintenanceOperationType.Validation.ToString());
+        viewModel.OperationTypeOptions.Should().Contain(option => option.Label == "Restore" && option.Value == MaintenanceOperationType.Restore.ToString());
     }
 
     [Fact]
@@ -101,6 +103,62 @@ public sealed class MaintenanceWorkspaceViewModelTests
         viewModel.ProgressStatusText.Should().Be(AppStrings.MaintenanceProgressFailed);
     }
 
+    [Fact]
+    public void OperationTypeChanged_ShouldUseSafeRestoreDefaults()
+    {
+        var viewModel = new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore());
+        viewModel.SetConnection(CreateConnection(), null);
+
+        viewModel.OperationType = MaintenanceOperationType.Restore.ToString();
+
+        viewModel.SourcePath.Should().Be("db.fdb.fbk");
+        viewModel.TargetPath.Should().Be("db-restored.fdb");
+        viewModel.TargetPath.Should().NotBe("db.fdb");
+        viewModel.IsTargetPathEnabled.Should().BeTrue();
+        viewModel.SourcePathLabel.Should().Be(AppStrings.MaintenanceSourceBackup);
+        viewModel.TargetPathLabel.Should().Be(AppStrings.MaintenanceTargetNewDatabase);
+    }
+
+    [Fact]
+    public async Task Validation_ShouldClearTargetAndCreateValidationRequest()
+    {
+        var service = new FakeMaintenanceService();
+        var viewModel = new MaintenanceWorkspaceViewModel(service, new FakeMaintenanceHistoryStore());
+        viewModel.SetConnection(CreateConnection(), null);
+        viewModel.OperationType = MaintenanceOperationType.Validation.ToString();
+        viewModel.Confirmed = true;
+
+        await viewModel.ExecuteAsync();
+
+        viewModel.SourcePath.Should().Be("db.fdb");
+        viewModel.TargetPath.Should().BeEmpty();
+        viewModel.IsTargetPathEnabled.Should().BeFalse();
+        viewModel.TargetPathLabel.Should().Be(AppStrings.MaintenanceTargetNotUsed);
+        service.LastRequest.Should().BeOfType<ValidationRequest>();
+        service.LastRequest!.Target.Should().BeNull();
+    }
+
+    [Fact]
+    public void HistoryRows_ShouldUsePortugueseStatusAndType()
+    {
+        var operation = new MaintenanceOperation(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            MaintenanceOperationType.Validation,
+            MaintenanceOperationStatus.Failed,
+            "db.fdb",
+            null,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow,
+            1,
+            "Operação falhou.");
+
+        var row = new MaintenanceOperationRowViewModel(operation);
+
+        row.Type.Should().Be("Validação");
+        row.Status.Should().Be("Falhou");
+    }
+
     private static ConnectionContext CreateConnection()
     {
         return new ConnectionContext(
@@ -124,6 +182,7 @@ public sealed class MaintenanceWorkspaceViewModelTests
         public event EventHandler<MaintenanceProgress>? ProgressChanged;
         public event EventHandler<MaintenanceLogLine>? LogReceived;
         public List<double> ProgressValues { get; } = [];
+        public MaintenanceRequest? LastRequest { get; private set; }
 
         public Task<MaintenancePreflightResult> ValidateAsync(MaintenanceRequest request, CancellationToken cancellationToken)
         {
@@ -132,6 +191,7 @@ public sealed class MaintenanceWorkspaceViewModelTests
 
         public Task<MaintenanceResult> ExecuteAsync(MaintenanceRequest request, CredentialSecret? password, CancellationToken cancellationToken)
         {
+            LastRequest = request;
             var operation = new MaintenanceOperation(Guid.NewGuid(), request.Connection.ProfileId, request.Type, finalStatus, request.Source, request.Target, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow, finalStatus is MaintenanceOperationStatus.Succeeded ? 0 : 1, "ok");
             ProgressChanged?.Invoke(this, new MaintenanceProgress(operation.Id, "Resultado", progressPercent, "ok", DateTimeOffset.UtcNow));
             if (progressPercent is not null)
