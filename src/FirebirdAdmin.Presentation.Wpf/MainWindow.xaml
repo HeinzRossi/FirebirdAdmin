@@ -9,7 +9,7 @@
         Icon="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin.ico"
         Width="1180"
         Height="760"
-        WindowState="Maximized"
+        WindowState="Normal"
         WindowStyle="None"
         ResizeMode="CanResize"
         MinWidth="820"
@@ -17,6 +17,7 @@
         Background="{DynamicResource Brush.App.Background}"
         Foreground="{DynamicResource Brush.App.Foreground}"
         FontFamily="{DynamicResource FontFamily.Base}"
+        SourceInitialized="Window_OnSourceInitialized"
         StateChanged="Window_OnStateChanged"
         KeyDown="Window_OnKeyDown">
     <winshell:WindowChrome.WindowChrome>

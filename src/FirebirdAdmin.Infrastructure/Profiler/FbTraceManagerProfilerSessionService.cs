@@ -11,8 +11,6 @@ public sealed class FbTraceManagerProfilerSessionService(
     ITraceEventParser traceEventParser,
     ITraceProcessRunner traceProcessRunner) : IProfilerSessionService
 {
-    private static readonly TimeSpan StartupProbeTimeout = TimeSpan.FromSeconds(1);
-
     private readonly Channel<ProfilerEvent> channel = Channel.CreateUnbounded<ProfilerEvent>(
         new UnboundedChannelOptions { SingleReader = false, SingleWriter = true });
 
@@ -183,7 +181,8 @@ public sealed class FbTraceManagerProfilerSessionService(
         var bufferedErrors = new List<string>();
         var bufferLock = new object();
         var parseErrorDetected = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var bufferingStartup = true;
+        var accepted = false;
+        var suppressFinalFlush = false;
 
         using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -191,16 +190,15 @@ public sealed class FbTraceManagerProfilerSessionService(
         {
             if (IsTraceConfigurationParseError(line))
             {
+                AddBufferedLine(bufferedOutput, line);
                 parseErrorDetected.TrySetResult();
+                return;
             }
 
             if (ShouldBuffer())
             {
-                lock (bufferLock)
-                {
-                    bufferedOutput.Add(line);
-                }
-
+                AddBufferedLine(bufferedOutput, line);
+                await AcceptBufferedAttemptIfReadyAsync(token);
                 return;
             }
 
@@ -211,16 +209,14 @@ public sealed class FbTraceManagerProfilerSessionService(
         {
             if (IsTraceConfigurationParseError(line))
             {
+                AddBufferedLine(bufferedErrors, line);
                 parseErrorDetected.TrySetResult();
+                return;
             }
 
             if (ShouldBuffer())
             {
-                lock (bufferLock)
-                {
-                    bufferedErrors.Add(line);
-                }
-
+                AddBufferedLine(bufferedErrors, line);
                 return;
             }
 
@@ -235,13 +231,17 @@ public sealed class FbTraceManagerProfilerSessionService(
 
         try
         {
-            var startupDelay = Task.Delay(StartupProbeTimeout, cancellationToken);
-            var completed = await Task.WhenAny(runnerTask, startupDelay, parseErrorDetected.Task);
+            var completed = await Task.WhenAny(runnerTask, parseErrorDetected.Task);
 
-            if (completed == parseErrorDetected.Task && !runnerTask.IsCompleted)
+            if (completed == parseErrorDetected.Task)
             {
-                await attemptCts.CancelAsync();
-                await WaitForAttemptCancellationAsync(runnerTask);
+                suppressFinalFlush = true;
+                if (!runnerTask.IsCompleted)
+                {
+                    await attemptCts.CancelAsync();
+                    await WaitForAttemptCancellationAsync(runnerTask);
+                }
+
                 return new TraceAttemptResult(dialect, ExitCode: 1, ParseConfigurationFailed: true, bufferedOutput, bufferedErrors);
             }
 
@@ -249,22 +249,25 @@ public sealed class FbTraceManagerProfilerSessionService(
             {
                 var exitCode = await runnerTask;
                 var failedByParse = HasTraceConfigurationParseError(bufferedOutput) || HasTraceConfigurationParseError(bufferedErrors);
-                if (!failedByParse)
+                if (!failedByParse && !WasAccepted())
                 {
-                    await FlushBufferedLinesAsync(bufferedOutput, bufferedErrors, block, cancellationToken);
+                    await AcceptBufferedAttemptAsync(cancellationToken);
+                }
+                else
+                {
+                    suppressFinalFlush = true;
                 }
 
                 return new TraceAttemptResult(dialect, exitCode, failedByParse, bufferedOutput, bufferedErrors);
             }
-
-            bufferingStartup = false;
-            await FlushBufferedLinesAsync(bufferedOutput, bufferedErrors, block, cancellationToken);
-            var runningExitCode = await runnerTask;
-            return new TraceAttemptResult(dialect, runningExitCode, ParseConfigurationFailed: false, bufferedOutput, bufferedErrors);
         }
         finally
         {
-            await FlushBlockAsync(block, CancellationToken.None);
+            if (!suppressFinalFlush)
+            {
+                await FlushBlockAsync(block, CancellationToken.None);
+            }
+
             DeleteIfExists(attemptConfigPath);
             if (string.Equals(traceConfigPath, attemptConfigPath, StringComparison.OrdinalIgnoreCase))
             {
@@ -272,13 +275,73 @@ public sealed class FbTraceManagerProfilerSessionService(
             }
         }
 
+        throw new InvalidOperationException("Tentativa de Trace finalizada sem resultado.");
+
+        void AddBufferedLine(List<string> target, string line)
+        {
+            lock (bufferLock)
+            {
+                target.Add(line);
+            }
+        }
+
         bool ShouldBuffer()
         {
             lock (bufferLock)
             {
-                return bufferingStartup;
+                return !accepted;
             }
         }
+
+        bool WasAccepted()
+        {
+            lock (bufferLock)
+            {
+                return accepted;
+            }
+        }
+
+        async Task AcceptBufferedAttemptIfReadyAsync(CancellationToken token)
+        {
+            lock (bufferLock)
+            {
+                if (accepted || !HasCompleteRecognizedTraceBlock(bufferedOutput))
+                {
+                    return;
+                }
+
+                accepted = true;
+            }
+
+            await AcceptBufferedAttemptAsync(token);
+            await PublishTechnicalAsync($"Profiler Trace em execução com dialeto {dialect}.", token);
+        }
+
+        async Task AcceptBufferedAttemptAsync(CancellationToken token)
+        {
+            IReadOnlyList<string> outputSnapshot;
+            IReadOnlyList<string> errorSnapshot;
+            lock (bufferLock)
+            {
+                outputSnapshot = bufferedOutput.ToArray();
+                errorSnapshot = bufferedErrors.ToArray();
+            }
+
+            await FlushBufferedLinesAsync(outputSnapshot, errorSnapshot, block, token);
+        }
+    }
+
+    private static bool HasCompleteRecognizedTraceBlock(IReadOnlyList<string> lines)
+    {
+        if (lines.Count == 0 || !string.IsNullOrWhiteSpace(lines[^1]))
+        {
+            return false;
+        }
+
+        return lines.Any(line =>
+            line.Contains("statement finished", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("statement start", StringComparison.OrdinalIgnoreCase) ||
+            line.Contains("statement prepare", StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task WaitForAttemptCancellationAsync(Task runnerTask)

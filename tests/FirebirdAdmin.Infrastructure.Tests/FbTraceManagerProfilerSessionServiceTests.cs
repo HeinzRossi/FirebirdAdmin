@@ -114,6 +114,30 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
     }
 
     [Fact]
+    public async Task StartAsync_ShouldDiscardStartupLinesAndRetry_WhenParseErrorArrivesAfterTraceStarts()
+    {
+        var runner = new FakeTraceProcessRunner(
+            parseErrorOnFirstAttempt: true,
+            emitStartupLineBeforeParse: true,
+            parseErrorDelay: TimeSpan.FromMilliseconds(50));
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(serverVersion: "2.5.9"), secret, CancellationToken.None);
+        var profilerEvent = await ReadOneAsync(service);
+        await service.StopAsync(CancellationToken.None);
+
+        runner.AttemptCount.Should().Be(2);
+        profilerEvent.Type.Should().Be(TraceEventType.StatementFinished);
+        profilerEvent.RawTrace.Should().NotContain("Trace session ID 1 started");
+        profilerEvent.RawTrace.Should().NotContain("error while parsing trace configuration");
+    }
+
+    [Fact]
     public async Task StartAsync_ShouldPublishClearTechnicalEvent_WhenBothDialectsFail()
     {
         var runner = new FakeTraceProcessRunner(parseErrorOnFirstAttempt: true, parseErrorOnSecondAttempt: true);
@@ -175,7 +199,9 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         int exitCode = 0,
         bool emitStatement = true,
         bool parseErrorOnFirstAttempt = false,
-        bool parseErrorOnSecondAttempt = false) : ITraceProcessRunner
+        bool parseErrorOnSecondAttempt = false,
+        bool emitStartupLineBeforeParse = false,
+        TimeSpan? parseErrorDelay = null) : ITraceProcessRunner
     {
         public TraceProcessRequest? Request { get; private set; }
         public string? FetchPath { get; private set; }
@@ -207,6 +233,16 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
 
             if ((AttemptCount == 1 && parseErrorOnFirstAttempt) || (AttemptCount == 2 && parseErrorOnSecondAttempt))
             {
+                if (emitStartupLineBeforeParse)
+                {
+                    await onOutputLine("Trace session ID 1 started", cancellationToken);
+                }
+
+                if (parseErrorDelay is not null)
+                {
+                    await Task.Delay(parseErrorDelay.Value, cancellationToken);
+                }
+
                 await onErrorLine("error while parsing trace configuration", cancellationToken);
                 await onErrorLine("line 7: expected name, got \"/\"", cancellationToken);
                 await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);

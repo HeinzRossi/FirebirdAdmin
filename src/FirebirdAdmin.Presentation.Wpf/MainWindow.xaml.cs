@@ -2,8 +2,11 @@ using FirebirdAdmin.Presentation.Wpf.Shell;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using ScottPlot;
 using ScottPlot.WPF;
+using System.Runtime.InteropServices;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
 using System.Windows;
 
 namespace FirebirdAdmin.Presentation.Wpf;
@@ -13,6 +16,8 @@ public partial class MainWindow
     private readonly ShellViewModel viewModel;
     private WpfPlot? activityPlot;
     private PasswordBox? passwordInput;
+    private Rect? restoreBoundsBeforeOperationalMaximize;
+    private bool isOperationalMaximized;
 
     public MainWindow(ShellViewModel viewModel)
     {
@@ -282,7 +287,7 @@ public partial class MainWindow
             return;
         }
 
-        if (WindowState == WindowState.Normal)
+        if (WindowState == WindowState.Normal && !isOperationalMaximized)
         {
             DragMove();
             e.Handled = true;
@@ -309,15 +314,22 @@ public partial class MainWindow
         UpdateMaximizeRestoreGlyph();
     }
 
+    private void Window_OnSourceInitialized(object? sender, EventArgs e)
+    {
+        var workArea = GetCurrentMonitorWorkArea();
+        restoreBoundsBeforeOperationalMaximize = CreateCenteredRestoreBounds(workArea);
+        ApplyOperationalMaximize(rememberCurrentBounds: false);
+    }
+
     private void ToggleMaximizeRestore()
     {
-        if (WindowState == WindowState.Maximized)
+        if (isOperationalMaximized)
         {
-            SystemCommands.RestoreWindow(this);
+            RestoreOperationalBounds();
         }
         else
         {
-            SystemCommands.MaximizeWindow(this);
+            ApplyOperationalMaximize(rememberCurrentBounds: true);
         }
 
         UpdateMaximizeRestoreGlyph();
@@ -330,6 +342,100 @@ public partial class MainWindow
             return;
         }
 
-        MaximizeRestoreGlyph.Text = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
+        MaximizeRestoreGlyph.Text = isOperationalMaximized ? "\uE923" : "\uE922";
+    }
+
+    private void ApplyOperationalMaximize(bool rememberCurrentBounds)
+    {
+        if (rememberCurrentBounds && WindowState == WindowState.Normal && !isOperationalMaximized)
+        {
+            restoreBoundsBeforeOperationalMaximize = new Rect(Left, Top, Width, Height);
+        }
+
+        if (WindowState != WindowState.Normal)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        var workArea = GetCurrentMonitorWorkArea();
+        Left = workArea.Left;
+        Top = workArea.Top;
+        Width = workArea.Width;
+        Height = workArea.Height;
+        isOperationalMaximized = true;
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private void RestoreOperationalBounds()
+    {
+        if (WindowState != WindowState.Normal)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        var restoreBounds = restoreBoundsBeforeOperationalMaximize ?? CreateCenteredRestoreBounds(GetCurrentMonitorWorkArea());
+        Left = restoreBounds.Left;
+        Top = restoreBounds.Top;
+        Width = Math.Max(MinWidth, restoreBounds.Width);
+        Height = Math.Max(MinHeight, restoreBounds.Height);
+        isOperationalMaximized = false;
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private Rect CreateCenteredRestoreBounds(Rect workArea)
+    {
+        var width = Math.Min(Math.Max(MinWidth, Width), workArea.Width);
+        var height = Math.Min(Math.Max(MinHeight, Height), workArea.Height);
+        var left = workArea.Left + Math.Max(0, (workArea.Width - width) / 2);
+        var top = workArea.Top + Math.Max(0, (workArea.Height - height) / 2);
+        return new Rect(left, top, width, height);
+    }
+
+    private Rect GetCurrentMonitorWorkArea()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        var monitor = MonitorFromWindow(handle, MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+
+        if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return DeviceRectToDip(monitorInfo.WorkArea);
+        }
+
+        return SystemParameters.WorkArea;
+    }
+
+    private Rect DeviceRectToDip(NativeRect rect)
+    {
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var topLeft = transform.Transform(new Point(rect.Left, rect.Top));
+        var bottomRight = transform.Transform(new Point(rect.Right, rect.Bottom));
+        return new Rect(topLeft, bottomRight);
+    }
+
+    private const int MonitorDefaultToNearest = 2;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, int flags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool GetMonitorInfo(IntPtr monitorHandle, ref MonitorInfo monitorInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect MonitorArea;
+        public NativeRect WorkArea;
+        public int Flags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativeRect
+    {
+        public readonly int Left;
+        public readonly int Top;
+        public readonly int Right;
+        public readonly int Bottom;
     }
 }
