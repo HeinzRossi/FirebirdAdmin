@@ -13,6 +13,7 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
     private static readonly Regex WritesRegex = new(@"writes\s*[:=]\s*(?<value>\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex FetchesRegex = new(@"fetches\s*[:=]\s*(?<value>\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex MarksRegex = new(@"marks\s*[:=]\s*(?<value>\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ClientProcessRegex = new(@"^\s*(?<path>.+?\.(?:exe|dll)):\d+\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline);
 
     public IReadOnlyList<ProfilerEvent> ParseBlock(string block, long startingSequence, DateTimeOffset timestamp)
     {
@@ -47,7 +48,8 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
                     ExtractLong(FetchesRegex, block),
                     ExtractLong(MarksRegex, block)),
                 plan,
-                block)
+                block,
+                ExtractClientProcessPath(block))
         ];
     }
 
@@ -65,6 +67,12 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
             new ProfilerMetrics(),
             null,
             block);
+    }
+
+    private static string? ExtractClientProcessPath(string block)
+    {
+        var match = ClientProcessRegex.Match(block);
+        return match.Success ? match.Groups["path"].Value.Trim() : null;
     }
 
     private static TraceEventType ResolveType(string block)

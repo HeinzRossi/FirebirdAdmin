@@ -19,7 +19,7 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         using var secret = CredentialSecret.FromPlainText("masterkey");
 
         await service.StartAsync(CreateOptions(), secret, CancellationToken.None);
-        var profilerEvent = await ReadOneAsync(service);
+        var profilerEvent = await ReadStatementAsync(service);
         await service.StopAsync(CancellationToken.None);
 
         runner.Request.Should().NotBeNull();
@@ -82,7 +82,7 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         using var secret = CredentialSecret.FromPlainText("masterkey");
 
         await service.StartAsync(CreateOptions(serverVersion: "2.5.9", traceManagerVersion: "Firebird Trace Manager version 5.0.0"), secret, CancellationToken.None);
-        var profilerEvent = await ReadOneAsync(service);
+        var profilerEvent = await ReadStatementAsync(service);
         await service.StopAsync(CancellationToken.None);
 
         runner.ConfigContentDuringRun.Should().Contain("database = employee.fdb");
@@ -103,7 +103,7 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         using var secret = CredentialSecret.FromPlainText("masterkey");
 
         await service.StartAsync(CreateOptions(serverVersion: "2.5.9"), secret, CancellationToken.None);
-        var profilerEvent = await ReadOneAsync(service);
+        var profilerEvent = await ReadStatementAsync(service);
         await service.StopAsync(CancellationToken.None);
 
         runner.AttemptCount.Should().Be(2);
@@ -128,7 +128,7 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         using var secret = CredentialSecret.FromPlainText("masterkey");
 
         await service.StartAsync(CreateOptions(serverVersion: "2.5.9"), secret, CancellationToken.None);
-        var profilerEvent = await ReadOneAsync(service);
+        var profilerEvent = await ReadStatementAsync(service);
         await service.StopAsync(CancellationToken.None);
 
         runner.AttemptCount.Should().Be(2);
@@ -159,15 +159,68 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         service.State.Should().Be(ProfilerState.Failed);
     }
 
-    private static async Task<ProfilerEvent> ReadOneAsync(IProfilerSessionService service)
+    [Fact]
+    public async Task StartAsync_ShouldSuppressStatementEventsFromFirebirdAdminProcess()
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var runner = new FakeTraceProcessRunner(clientProcessPath: @"C:\Projetos\FirebirdAdmin\FirebirdAdmin.Bootstrapper.exe");
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(), secret, CancellationToken.None);
+
+        await FluentActions.Invoking(() => ReadStatementAsync(service, TimeSpan.FromMilliseconds(250)))
+            .Should()
+            .ThrowAsync<OperationCanceledException>();
+
+        await service.StopAsync(CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task StartAsync_ShouldPublishStatementEventsFromExternalProcess()
+    {
+        var runner = new FakeTraceProcessRunner(clientProcessPath: @"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe");
+        var service = new FbTraceManagerProfilerSessionService(
+            new TraceConfigurationBuilder(),
+            new FirebirdTraceEventParser(),
+            runner);
+
+        using var secret = CredentialSecret.FromPlainText("masterkey");
+
+        await service.StartAsync(CreateOptions(), secret, CancellationToken.None);
+        var profilerEvent = await ReadStatementAsync(service);
+        await service.StopAsync(CancellationToken.None);
+
+        profilerEvent.Type.Should().Be(TraceEventType.StatementFinished);
+        profilerEvent.ClientProcessPath.Should().Be(@"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe");
+    }
+
+    private static async Task<ProfilerEvent> ReadOneAsync(IProfilerSessionService service, TimeSpan? timeoutInterval = null)
+    {
+        using var timeout = new CancellationTokenSource(timeoutInterval ?? TimeSpan.FromSeconds(2));
         await foreach (var profilerEvent in service.ReadAllAsync(timeout.Token))
         {
             return profilerEvent;
         }
 
         throw new InvalidOperationException("Nenhum evento recebido.");
+    }
+
+    private static async Task<ProfilerEvent> ReadStatementAsync(IProfilerSessionService service, TimeSpan? timeoutInterval = null)
+    {
+        using var timeout = new CancellationTokenSource(timeoutInterval ?? TimeSpan.FromSeconds(2));
+        await foreach (var profilerEvent in service.ReadAllAsync(timeout.Token))
+        {
+            if (profilerEvent.Type is TraceEventType.StatementStarted or TraceEventType.StatementFinished)
+            {
+                return profilerEvent;
+            }
+        }
+
+        throw new InvalidOperationException("Nenhum statement recebido.");
     }
 
     private static ProfilerOptions CreateOptions(
@@ -201,7 +254,8 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
         bool parseErrorOnFirstAttempt = false,
         bool parseErrorOnSecondAttempt = false,
         bool emitStartupLineBeforeParse = false,
-        TimeSpan? parseErrorDelay = null) : ITraceProcessRunner
+        TimeSpan? parseErrorDelay = null,
+        string clientProcessPath = @"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe") : ITraceProcessRunner
     {
         public TraceProcessRequest? Request { get; private set; }
         public string? FetchPath { get; private set; }
@@ -256,12 +310,15 @@ public sealed class FbTraceManagerProfilerSessionServiceTests
 
             if (emitStatement)
             {
-                await onOutputLine("statement finished", cancellationToken);
-                await onOutputLine("user: SYSDBA", cancellationToken);
-                await onOutputLine("attachment: 1", cancellationToken);
-                await onOutputLine("transaction: 2", cancellationToken);
-                await onOutputLine("duration: 1 ms", cancellationToken);
-                await onOutputLine("sql: select 1 from rdb$database", cancellationToken);
+                await onOutputLine("EXECUTE_STATEMENT_FINISH", cancellationToken);
+                await onOutputLine(@"C:\DATABASES\EMPLOYEE.FDB (ATT_1, SYSDBA:NONE, UTF8, TCPv4:127.0.0.1/62518)", cancellationToken);
+                await onOutputLine($"{clientProcessPath}:59648", cancellationToken);
+                await onOutputLine("\t(TRA_2, READ_COMMITTED | REC_VERSION | NOWAIT | READ_WRITE)", cancellationToken);
+                await onOutputLine(string.Empty, cancellationToken);
+                await onOutputLine("Statement 1:", cancellationToken);
+                await onOutputLine("-------------------------------------------------------------------------------", cancellationToken);
+                await onOutputLine("select 1 from rdb$database", cancellationToken);
+                await onOutputLine("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", cancellationToken);
                 await onOutputLine(string.Empty, cancellationToken);
             }
 

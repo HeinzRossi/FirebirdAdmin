@@ -108,4 +108,48 @@ public sealed class ProfilerParserTests
             "where rdb$system_flag = 0",
             "order by rdb$relation_name"));
     }
+
+    [Fact]
+    public void ParseBlock_ShouldExtractClientProcessPathForFirebirdAdmin()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_FINISH
+                             C:\DELPHI\COMPACTADOR\2019-05-29\RC.GDB (ATT_50014, SYSDBA:NONE, UTF8, TCPv4:127.0.0.1/62518)
+                             C:\Projetos\FirebirdAdmin\src\FirebirdAdmin.Bootstrapper\bin\Debug\net10.0-windows\win-x64\FirebirdAdmin.Bootstrapper.exe:30020
+                             	(TRA_90013, READ_COMMITTED | REC_VERSION | NOWAIT | READ_WRITE)
+
+                             Statement 34:
+                             -------------------------------------------------------------------------------
+                             select 1 from rdb$database
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             """;
+
+        var events = parser.ParseBlock(block, 40, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].ClientProcessPath.Should().Be(@"C:\Projetos\FirebirdAdmin\src\FirebirdAdmin.Bootstrapper\bin\Debug\net10.0-windows\win-x64\FirebirdAdmin.Bootstrapper.exe");
+    }
+
+    [Fact]
+    public void ParseBlock_ShouldExtractClientProcessPathForExternalTool()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_FINISH
+                             C:\DELPHI\COMPACTADOR\2019-05-29\RC.GDB (ATT_50014, SYSDBA:NONE, UTF8, TCPv4:127.0.0.1/62518)
+                             C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe:59648
+                             	(TRA_90013, READ_COMMITTED | REC_VERSION | NOWAIT | READ_WRITE)
+
+                             Statement 34:
+                             -------------------------------------------------------------------------------
+                             select 1 from rdb$database
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             """;
+
+        var events = parser.ParseBlock(block, 50, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].ClientProcessPath.Should().Be(@"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe");
+    }
 }

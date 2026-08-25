@@ -560,9 +560,32 @@ public sealed class FbTraceManagerProfilerSessionService(
         var sequence = Interlocked.Read(ref nextSequence);
         foreach (var profilerEvent in traceEventParser.ParseBlock(text, sequence, DateTimeOffset.UtcNow))
         {
+            if (ShouldSuppressOwnStatement(profilerEvent))
+            {
+                continue;
+            }
+
             Interlocked.Exchange(ref nextSequence, profilerEvent.Sequence + 1);
             await channel.Writer.WriteAsync(profilerEvent, cancellationToken);
         }
+    }
+
+    private static bool ShouldSuppressOwnStatement(ProfilerEvent profilerEvent)
+    {
+        if (profilerEvent.Type is not (TraceEventType.StatementStarted or TraceEventType.StatementFinished))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(profilerEvent.ClientProcessPath))
+        {
+            return false;
+        }
+
+        var fileName = Path.GetFileNameWithoutExtension(profilerEvent.ClientProcessPath);
+        return fileName.StartsWith("FirebirdAdmin.", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Equals("FirebirdAdmin", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Equals("testhost", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task PublishTechnicalAsync(string line, CancellationToken cancellationToken)
