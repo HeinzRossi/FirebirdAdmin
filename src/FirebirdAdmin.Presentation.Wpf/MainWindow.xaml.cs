@@ -2,6 +2,7 @@ using FirebirdAdmin.Presentation.Wpf.Shell;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using ScottPlot;
 using ScottPlot.WPF;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -25,6 +26,8 @@ public partial class MainWindow
         InitializeComponent();
         DataContext = viewModel;
         viewModel.Dashboard.ActivityChanged += Dashboard_OnActivityChanged;
+        viewModel.PropertyChanged += ShellViewModel_OnPropertyChanged;
+        Closed += MainWindow_OnClosed;
         UpdateActivityPlot();
         UpdateMaximizeRestoreGlyph();
     }
@@ -32,6 +35,14 @@ public partial class MainWindow
     private void Dashboard_OnActivityChanged(object? sender, EventArgs e)
     {
         UpdateActivityPlot();
+    }
+
+    private void ShellViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ShellViewModel.CurrentTheme))
+        {
+            UpdateActivityPlot();
+        }
     }
 
     private void UpdateActivityPlot()
@@ -45,11 +56,57 @@ public partial class MainWindow
         var values = viewModel.Dashboard.GetActivityValues();
         if (values.Length > 0)
         {
-            activityPlot.Plot.Add.Signal(values);
+            var signal = activityPlot.Plot.Add.Signal(values);
+            signal.LineColor = GetPlotColor("Brush.Accent");
+            signal.LineWidth = 2;
+            signal.MarkerColor = GetPlotColor("Brush.Accent.Strong");
+            signal.MarkerSize = 0;
         }
 
+        ApplyActivityPlotTheme();
         activityPlot.Plot.Axes.AutoScale();
         activityPlot.Refresh();
+    }
+
+    private void ApplyActivityPlotTheme()
+    {
+        if (activityPlot is null)
+        {
+            return;
+        }
+
+        var panel = GetPlotColor("Brush.Surface.Panel");
+        var data = GetPlotColor("Brush.Surface.Input");
+        var text = GetPlotColor("Brush.Text.Subtle");
+        var border = GetPlotColor("Brush.Border.Subtle");
+
+        activityPlot.Background = FindResource("Brush.Surface.Panel") as Brush;
+        activityPlot.Plot.FigureBackground.Color = panel;
+        activityPlot.Plot.DataBackground.Color = data;
+        activityPlot.Plot.Axes.Color(text);
+        activityPlot.Plot.Axes.FrameColor(border);
+
+        var grid = activityPlot.Plot.Grid;
+        grid.MajorLineColor = border;
+        grid.MinorLineColor = border.WithAlpha(0.35);
+    }
+
+    private ScottPlot.Color GetPlotColor(string resourceKey)
+    {
+        if (TryFindResource(resourceKey) is SolidColorBrush brush)
+        {
+            var color = brush.Color;
+            return new ScottPlot.Color(color.R, color.G, color.B, color.A);
+        }
+
+        return ScottPlot.Colors.Gray;
+    }
+
+    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    {
+        viewModel.Dashboard.ActivityChanged -= Dashboard_OnActivityChanged;
+        viewModel.PropertyChanged -= ShellViewModel_OnPropertyChanged;
+        Closed -= MainWindow_OnClosed;
     }
 
     private string CurrentPassword => passwordInput?.Password ?? string.Empty;
