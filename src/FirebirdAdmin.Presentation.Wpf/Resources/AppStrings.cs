@@ -36,6 +36,7 @@ public static class AppStrings
     public static string PasswordSavedForProfile => GetString(nameof(PasswordSavedForProfile));
     public static string PasswordNotSavedForProfile => GetString(nameof(PasswordNotSavedForProfile));
     public static string PasswordUnavailable => GetString(nameof(PasswordUnavailable));
+    public static string PasswordRequired => GetString(nameof(PasswordRequired));
     public static string PollingStopped => GetString(nameof(PollingStopped));
     public static string Port => GetString(nameof(Port));
     public static string ReadyStatus => GetString(nameof(ReadyStatus));

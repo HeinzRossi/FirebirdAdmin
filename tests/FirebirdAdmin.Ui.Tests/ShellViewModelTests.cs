@@ -168,7 +168,10 @@ public sealed class ShellViewModelTests
             credentialStore: credentialStore,
             profilerSessionService: profilerService);
 
-        await viewModel.ConnectAsync(string.Empty);
+        await viewModel.LoadInitialProfileAsync();
+        viewModel.RememberPassword = false;
+        await viewModel.ConnectAsync("masterkey");
+        viewModel.ClearSessionCredentialForShutdown();
         await viewModel.StartProfilerAsync(string.Empty);
 
         profilerService.StartCount.Should().Be(1);
@@ -207,7 +210,7 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task ConnectAsync_ShouldUseSavedPasswordWithoutClearing_WhenPasswordBoxIsEmpty()
+    public async Task ConnectAsync_ShouldRequirePassword_WhenPasswordBoxIsEmptyEvenWithSavedPassword()
     {
         var profile = new ConnectionProfile(
             Guid.NewGuid(),
@@ -232,13 +235,39 @@ public sealed class ShellViewModelTests
         await viewModel.LoadInitialProfileAsync();
         await viewModel.ConnectAsync(string.Empty);
 
-        connectionService.LastPasswordLength.Should().Be("saved-secret".Length);
-        profileService.LastRequest.Should().NotBeNull();
-        profileService.LastRequest!.RememberPassword.Should().BeTrue();
-        profileService.LastRequest.Password.Should().BeNull();
+        connectionService.ConnectionCount.Should().Be(0);
+        profileService.LastRequest.Should().BeNull();
         credentialStore.SaveCount.Should().Be(0);
         credentialStore.DeleteCount.Should().Be(0);
         viewModel.HasSavedPasswordForProfile.Should().BeTrue();
+        viewModel.OperationMessage.Should().Be(AppStrings.PasswordRequired);
+    }
+
+    [Fact]
+    public async Task LoadPasswordForCurrentProfileAsync_ShouldReturnSavedPasswordForPasswordBoxFill()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Local",
+            "localhost",
+            3050,
+            "employee.fdb",
+            "SYSDBA",
+            "UTF8",
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var viewModel = CreateViewModel(
+            connectionProfileService: new FakeConnectionProfileService(profile),
+            credentialStore: new FakeCredentialStore("saved-secret"));
+
+        await viewModel.LoadInitialProfileAsync();
+
+        using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
+
+        secret.Should().NotBeNull();
+        secret!.RevealAsString().Should().Be("saved-secret");
     }
 
     [Fact]
@@ -280,7 +309,7 @@ public sealed class ShellViewModelTests
 
         connectionService.ConnectionCount.Should().Be(0);
         viewModel.ConnectionState.Should().Be(ShellConnectionState.ConnectionFailed);
-        viewModel.OperationMessage.Should().Be(AppStrings.PasswordUnavailable);
+        viewModel.OperationMessage.Should().Be(AppStrings.PasswordRequired);
     }
 
     [Fact]
@@ -314,16 +343,17 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task ConnectAsync_ShouldReuseActiveSessionPassword_WhenReturningToSettingsWithoutSavedPassword()
+    public async Task LoadPasswordForCurrentProfileAsync_ShouldReturnActiveSessionPassword_WhenReturningToSettingsWithoutSavedPassword()
     {
         var connectionService = new FakeFirebirdConnectionService(false);
         var viewModel = CreateViewModel(firebirdConnectionService: connectionService);
 
         await viewModel.ConnectAsync("masterkey");
-        await viewModel.ConnectAsync(string.Empty);
+        using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
 
-        connectionService.ConnectionCount.Should().Be(2);
-        connectionService.LastPasswordLength.Should().Be("masterkey".Length);
+        connectionService.ConnectionCount.Should().Be(1);
+        secret.Should().NotBeNull();
+        secret!.RevealAsString().Should().Be("masterkey");
     }
 
     [Fact]

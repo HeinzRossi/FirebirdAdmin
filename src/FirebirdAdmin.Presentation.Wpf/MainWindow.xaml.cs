@@ -38,6 +38,7 @@ public partial class MainWindow
         try
         {
             await viewModel.LoadInitialProfileAsync();
+            await RefreshPasswordBoxFromProfileAsync();
         }
         catch (Exception ex)
         {
@@ -55,6 +56,14 @@ public partial class MainWindow
         if (e.PropertyName == nameof(ShellViewModel.CurrentTheme))
         {
             UpdateActivityPlot();
+            return;
+        }
+
+        if (e.PropertyName is nameof(ShellViewModel.ProfileName) or
+            nameof(ShellViewModel.HasSavedPasswordForProfile) or
+            nameof(ShellViewModel.ActiveConnection))
+        {
+            _ = RefreshPasswordBoxFromProfileAsync();
         }
     }
 
@@ -185,6 +194,7 @@ public partial class MainWindow
     private void PasswordInput_OnLoaded(object sender, System.Windows.RoutedEventArgs e)
     {
         passwordInput = (PasswordBox)sender;
+        _ = RefreshPasswordBoxFromProfileAsync();
     }
 
     private void PasswordInput_OnUnloaded(object sender, System.Windows.RoutedEventArgs e)
@@ -192,6 +202,30 @@ public partial class MainWindow
         if (ReferenceEquals(passwordInput, sender))
         {
             passwordInput = null;
+        }
+    }
+
+    private async Task RefreshPasswordBoxFromProfileAsync()
+    {
+        if (passwordInput is null)
+        {
+            return;
+        }
+
+        if (passwordInput.IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
+        try
+        {
+            using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
+            passwordInput.Password = secret?.RevealAsString() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            viewModel.OperationMessage = ex.Message;
+            passwordInput.Password = string.Empty;
         }
     }
 

@@ -296,6 +296,31 @@ public sealed partial class ShellViewModel : ObservableObject
         ApplyProfile(profile);
     }
 
+    public async Task<CredentialSecret?> LoadPasswordForCurrentProfileAsync(CancellationToken cancellationToken = default)
+    {
+        var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?? await FindProfileByNameAsync(ProfileName, cancellationToken);
+
+        if (profile?.HasSavedPassword == true)
+        {
+            var savedSecret = await credentialStore.TryLoadAsync(profile.Id, cancellationToken);
+            if (savedSecret is not null)
+            {
+                return savedSecret;
+            }
+        }
+
+        if (activeSessionCredentialBytes is { Length: > 0 } &&
+            ActiveConnection is not null &&
+            (profile?.Id == ActiveConnection.ProfileId ||
+             ActiveConnection.ProfileName.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            return CreateSecretCopy(activeSessionCredentialBytes);
+        }
+
+        return null;
+    }
+
     public async Task SaveProfileAsync(string password, CancellationToken cancellationToken = default)
     {
         using var secret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
@@ -403,18 +428,20 @@ public sealed partial class ShellViewModel : ObservableObject
         byte[]? credentialBytes = null;
         try
         {
-            using var profileSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret: null), cancellationToken);
-            using var savedSecret = profileSecret is null ? await credentialStore.TryLoadAsync(profile.Id, cancellationToken) : null;
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                ConnectionState = ShellConnectionState.ConnectionFailed;
+                OperationMessage = AppStrings.PasswordRequired;
+                return;
+            }
 
-            credentialBytes = !string.IsNullOrEmpty(password)
-                ? Encoding.UTF8.GetBytes(password)
-                : savedSecret?.CopyBytes() ?? activeSessionCredentialBytes?.ToArray();
+            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret: null), cancellationToken);
+            credentialBytes = Encoding.UTF8.GetBytes(password);
 
             if (credentialBytes is null || credentialBytes.Length == 0)
             {
                 ConnectionState = ShellConnectionState.ConnectionFailed;
-                OperationMessage = AppStrings.PasswordUnavailable;
+                OperationMessage = AppStrings.PasswordRequired;
                 return;
             }
 
@@ -423,7 +450,7 @@ public sealed partial class ShellViewModel : ObservableObject
                 new ConnectionRequest(profile, connectionSecret),
                 cancellationToken);
 
-            var shouldPersistRememberedPassword = RememberPassword && (profileSecret is not null || savedSecret is null);
+            var shouldPersistRememberedPassword = RememberPassword;
             if (setActiveConnection && shouldPersistRememberedPassword)
             {
                 using var rememberedSecret = CreateSecretCopy(credentialBytes);

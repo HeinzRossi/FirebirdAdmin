@@ -93,6 +93,9 @@
   <data name="PasswordUnavailable" xml:space="preserve">
     <value>A senha da sessão não está disponível. Reconecte ou salve o perfil com senha lembrada.</value>
   </data>
+  <data name="PasswordRequired" xml:space="preserve">
+    <value>Informe a senha para conectar.</value>
+  </data>
   <data name="PollingStopped" xml:space="preserve">
     <value>Polling parado</value>
   </data>
