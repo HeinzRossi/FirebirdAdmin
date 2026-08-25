@@ -181,11 +181,11 @@
                     </DataGrid.Columns>
                 </DataGrid>
                 <TabControl Grid.Row="3" Margin="0,8,0,0" TabIndex="27">
-                    <TabItem Header="{x:Static res:AppStrings.TabSql}"><TextBox Text="{Binding SelectedSql, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabPerformance}"><TextBox Text="{Binding SelectedPerformance, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabContext}"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabPlan}"><TextBox Text="{Binding SelectedPlan, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabRawTrace}"><TextBox Text="{Binding SelectedRawTrace, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabSql}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedSql, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabPerformance}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedPerformance, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabContext}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabPlan}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedPlan, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabRawTrace}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedRawTrace, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
                 </TabControl>
             </Grid>
         </DataTemplate>
@@ -254,11 +254,11 @@
                     </DataGrid.Columns>
                 </DataGrid>
                 <TabControl Grid.Row="3" Margin="0,8,0,0" AutomationProperties.Name="Detalhes do alerta">
-                    <TabItem Header="{x:Static res:AppStrings.TabSummary}"><TextBox Text="{Binding SelectedSummary, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabEvidence}"><TextBox Text="{Binding SelectedEvidence, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabContext}"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabTimeline}"><TextBox Text="{Binding SelectedTimeline, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabRule}"><TextBox Text="{Binding SelectedRule, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabSummary}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedSummary, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabEvidence}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedEvidence, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabContext}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedContext, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabTimeline}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedTimeline, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabRule}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedRule, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
                 </TabControl>
             </Grid>
         </DataTemplate>
@@ -287,16 +287,16 @@
                     </DataGrid.Columns>
                 </DataGrid>
                 <TabControl Grid.Row="3" Margin="0,8,0,0" TabIndex="57">
-                    <TabItem Header="{x:Static res:AppStrings.TabOverview}"><TextBox Text="{Binding SelectedOverview, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabColumns}"><TextBox Text="{Binding SelectedColumns, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabParameters}"><TextBox Text="{Binding SelectedParameters, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabIndexes}"><TextBox Text="{Binding SelectedIndexes, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabConstraints}"><TextBox Text="{Binding SelectedConstraints, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabTriggers}"><TextBox Text="{Binding SelectedTriggers, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabDependencies}"><TextBox Text="{Binding SelectedDependencies, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabSource}"><TextBox Text="{Binding SelectedSource, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabDdl}"><TextBox Text="{Binding SelectedDdl, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
-                    <TabItem Header="{x:Static res:AppStrings.TabError}"><TextBox Text="{Binding SelectedError, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabOverview}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedOverview, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabColumns}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedColumns, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabParameters}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedParameters, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabIndexes}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedIndexes, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabConstraints}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedConstraints, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabTriggers}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedTriggers, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabDependencies}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedDependencies, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabSource}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedSource, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabDdl}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedDdl, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
+                    <TabItem Header="{x:Static res:AppStrings.TabError}"><Grid Style="{DynamicResource TabContent.Root}"><TextBox Text="{Binding SelectedError, Mode=OneWay}" Style="{DynamicResource TextBox.Details}"/></Grid></TabItem>
                 </TabControl>
             </Grid>
         </DataTemplate>

@@ -35,6 +35,11 @@
         <Setter Property="CornerRadius" Value="{DynamicResource Radius.L}"/>
         <Setter Property="Padding" Value="{DynamicResource Spacing.Thickness.L}"/>
     </Style>
+    <Style x:Key="TabContent.Root" TargetType="Grid">
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
+    </Style>
 
     <Style TargetType="TabControl">
         <Setter Property="Background" Value="{DynamicResource Brush.Surface.Panel}"/>
