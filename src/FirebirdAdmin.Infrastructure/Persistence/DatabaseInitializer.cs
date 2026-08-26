@@ -52,12 +52,14 @@ public sealed class DatabaseInitializer(
             using var source = new SqliteConnection(new SqliteConnectionStringBuilder
             {
                 DataSource = paths.DatabasePath,
-                Mode = SqliteOpenMode.ReadWrite
+                Mode = SqliteOpenMode.ReadWrite,
+                Pooling = false
             }.ToString());
             using var destination = new SqliteConnection(new SqliteConnectionStringBuilder
             {
                 DataSource = backupPath,
-                Mode = SqliteOpenMode.ReadWriteCreate
+                Mode = SqliteOpenMode.ReadWriteCreate,
+                Pooling = false
             }.ToString());
             source.Open();
             destination.Open();
