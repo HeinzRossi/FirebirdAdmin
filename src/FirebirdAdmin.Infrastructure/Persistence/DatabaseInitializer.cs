@@ -20,17 +20,13 @@ public sealed class DatabaseInitializer(
         }
         catch (Exception ex) when (ShouldRecoverDatabaseFile(ex))
         {
-            if (TryMoveDatabaseAside())
+            if (!TryMoveDatabaseAside())
             {
-                try
-                {
-                    await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-                    await dbContext.Database.MigrateAsync(cancellationToken);
-                }
-                catch (Exception retryException) when (ShouldRecoverDatabaseFile(retryException))
-                {
-                }
+                throw new InvalidOperationException("Não foi possível isolar o banco local inválido.", ex);
             }
+
+            await using var recoveredDbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await recoveredDbContext.Database.MigrateAsync(cancellationToken);
         }
     }
 
@@ -53,7 +49,19 @@ public sealed class DatabaseInitializer(
 
         try
         {
-            File.Copy(paths.DatabasePath, backupPath, overwrite: false);
+            using var source = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = paths.DatabasePath,
+                Mode = SqliteOpenMode.ReadWrite
+            }.ToString());
+            using var destination = new SqliteConnection(new SqliteConnectionStringBuilder
+            {
+                DataSource = backupPath,
+                Mode = SqliteOpenMode.ReadWriteCreate
+            }.ToString());
+            source.Open();
+            destination.Open();
+            source.BackupDatabase(destination);
 
             foreach (var oldBackup in Directory
                 .EnumerateFiles(paths.BackupDirectory, "firebird-admin-*.db")
@@ -61,6 +69,29 @@ public sealed class DatabaseInitializer(
                 .Skip(3))
             {
                 File.Delete(oldBackup);
+            }
+        }
+        catch (IOException)
+        {
+            DeleteIncompleteBackup(backupPath);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            DeleteIncompleteBackup(backupPath);
+        }
+        catch (SqliteException)
+        {
+            DeleteIncompleteBackup(backupPath);
+        }
+    }
+
+    private static void DeleteIncompleteBackup(string backupPath)
+    {
+        try
+        {
+            if (File.Exists(backupPath))
+            {
+                File.Delete(backupPath);
             }
         }
         catch (IOException)

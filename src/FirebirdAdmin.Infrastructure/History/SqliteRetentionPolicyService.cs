@@ -30,17 +30,25 @@ public sealed class SqliteRetentionPolicyService(
         await using var connection = connectionFactory.Create();
         await connection.OpenAsync(cancellationToken);
 
-        await connection.ExecuteAsync(new CommandDefinition(
-            """
-            DELETE FROM TraceEvents
-            WHERE Id IN (SELECT Id FROM TraceEvents WHERE Timestamp < @Cutoff ORDER BY Timestamp LIMIT @BatchSize);
-            DELETE FROM MonitoringSnapshots
-            WHERE Id IN (SELECT Id FROM MonitoringSnapshots WHERE CapturedAt < @Cutoff ORDER BY CapturedAt LIMIT @BatchSize);
-            DELETE FROM PerformanceSnapshots
-            WHERE Id IN (SELECT Id FROM PerformanceSnapshots WHERE CapturedAt < @Cutoff ORDER BY CapturedAt LIMIT @BatchSize);
-            """,
-            new { Cutoff = cutoff, policy.BatchSize },
-            cancellationToken: cancellationToken));
+        for (var batch = 0; batch < 50; batch++)
+        {
+            var affected = await connection.ExecuteAsync(new CommandDefinition(
+                """
+                DELETE FROM TraceEvents
+                WHERE Id IN (SELECT Id FROM TraceEvents WHERE Timestamp < @Cutoff ORDER BY Timestamp LIMIT @BatchSize);
+                DELETE FROM MonitoringSnapshots
+                WHERE Id IN (SELECT Id FROM MonitoringSnapshots WHERE CapturedAt < @Cutoff ORDER BY CapturedAt LIMIT @BatchSize);
+                DELETE FROM PerformanceSnapshots
+                WHERE Id IN (SELECT Id FROM PerformanceSnapshots WHERE CapturedAt < @Cutoff ORDER BY CapturedAt LIMIT @BatchSize);
+                """,
+                new { Cutoff = cutoff, policy.BatchSize },
+                cancellationToken: cancellationToken));
+
+            if (affected == 0)
+            {
+                break;
+            }
+        }
 
         if (File.Exists(paths.DatabasePath) && new FileInfo(paths.DatabasePath).Length > policy.MaxDatabaseBytes)
         {

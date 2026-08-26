@@ -32,7 +32,6 @@ public sealed partial class ShellViewModel : ObservableObject
     private IReadOnlyList<ConnectionProfile> connectionProfiles = [];
     private CancellationTokenSource? monitoringReadCts;
     private byte[]? activeSessionCredentialBytes;
-    private bool isApplyingProfile;
 
     [ObservableProperty]
     private string profileName = "Local";
@@ -272,14 +271,6 @@ public sealed partial class ShellViewModel : ObservableObject
         UpdatePasswordStatusFromProfileName();
     }
 
-    partial void OnRememberPasswordChanged(bool value)
-    {
-        if (!value && !isApplyingProfile)
-        {
-            _ = ForgetSavedPasswordForCurrentProfileAsync();
-        }
-    }
-
     partial void OnHasSavedPasswordForProfileChanged(bool value)
     {
         OnPropertyChanged(nameof(PasswordStatusText));
@@ -303,31 +294,6 @@ public sealed partial class ShellViewModel : ObservableObject
         }
 
         ApplyProfile(profile);
-    }
-
-    public async Task<CredentialSecret?> LoadPasswordForCurrentProfileAsync(CancellationToken cancellationToken = default)
-    {
-        var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase))
-            ?? await FindProfileByNameAsync(ProfileName, cancellationToken);
-
-        if (profile?.HasSavedPassword == true)
-        {
-            var savedSecret = await credentialStore.TryLoadAsync(profile.Id, cancellationToken);
-            if (savedSecret is not null)
-            {
-                return savedSecret;
-            }
-        }
-
-        if (activeSessionCredentialBytes is { Length: > 0 } &&
-            ActiveConnection is not null &&
-            (profile?.Id == ActiveConnection.ProfileId ||
-             ActiveConnection.ProfileName.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase)))
-        {
-            return CreateSecretCopy(activeSessionCredentialBytes);
-        }
-
-        return null;
     }
 
     public async Task SaveProfileAsync(string password, CancellationToken cancellationToken = default)
@@ -435,17 +401,20 @@ public sealed partial class ShellViewModel : ObservableObject
         OperationMessage = AppStrings.ConnectingStatus;
 
         byte[]? credentialBytes = null;
+        CredentialSecret? storedSecret = null;
         try
         {
-            if (string.IsNullOrWhiteSpace(password))
+            var existingProfile = await FindProfileByNameAsync(ProfileName, cancellationToken);
+            var passwordWasTyped = !string.IsNullOrWhiteSpace(password);
+
+            if (!passwordWasTyped && existingProfile?.HasSavedPassword == true)
             {
-                ConnectionState = ShellConnectionState.ConnectionFailed;
-                OperationMessage = AppStrings.PasswordRequired;
-                return;
+                storedSecret = await credentialStore.TryLoadAsync(existingProfile.Id, cancellationToken);
             }
 
-            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret: null), cancellationToken);
-            credentialBytes = Encoding.UTF8.GetBytes(password);
+            credentialBytes = passwordWasTyped
+                ? Encoding.UTF8.GetBytes(password)
+                : storedSecret?.CopyBytes();
 
             if (credentialBytes is null || credentialBytes.Length == 0)
             {
@@ -454,22 +423,27 @@ public sealed partial class ShellViewModel : ObservableObject
                 return;
             }
 
+            var profile = existingProfile ?? CreateTransientProfile();
+
             using var connectionSecret = CreateSecretCopy(credentialBytes);
             var context = await firebirdConnectionService.ConnectAsync(
                 new ConnectionRequest(profile, connectionSecret),
                 cancellationToken);
 
             var shouldPersistRememberedPassword = RememberPassword;
-            if (setActiveConnection && shouldPersistRememberedPassword)
-            {
-                using var rememberedSecret = CreateSecretCopy(credentialBytes);
-                await credentialStore.SaveAsync(profile.Id, rememberedSecret!, cancellationToken);
-                profile = (await connectionProfileService.GetAsync(profile.Id, cancellationToken) ?? profile) with { HasSavedPassword = true };
-            }
-
             if (setActiveConnection)
             {
-                HasSavedPasswordForProfile = shouldPersistRememberedPassword || (RememberPassword && profile.HasSavedPassword);
+                profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret: null), cancellationToken);
+                context = context with { ProfileId = profile.Id, ProfileName = profile.Name };
+
+                if (shouldPersistRememberedPassword && passwordWasTyped)
+                {
+                    using var rememberedSecret = CreateSecretCopy(credentialBytes);
+                    await credentialStore.SaveAsync(profile.Id, rememberedSecret!, cancellationToken);
+                    profile = (await connectionProfileService.GetAsync(profile.Id, cancellationToken) ?? profile) with { HasSavedPassword = true };
+                }
+
+                HasSavedPasswordForProfile = profile.HasSavedPassword;
                 RememberPassword = shouldPersistRememberedPassword;
                 connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
                 StoreActiveSessionCredential(credentialBytes);
@@ -498,6 +472,7 @@ public sealed partial class ShellViewModel : ObservableObject
         }
         finally
         {
+            storedSecret?.Dispose();
             if (credentialBytes is not null)
             {
                 Array.Clear(credentialBytes);
@@ -562,8 +537,8 @@ public sealed partial class ShellViewModel : ObservableObject
             {
                 Dashboard.ApplySnapshot(snapshot);
                 TransactionsWorkspace.ApplySnapshot(snapshot);
-                _ = RunDiagnosticsAsync(snapshot);
-                _ = PersistMonitoringSnapshotAsync(snapshot);
+                await RunDiagnosticsAsync(snapshot);
+                await PersistMonitoringSnapshotAsync(snapshot, cancellationToken);
             }
         }
         catch (OperationCanceledException)
@@ -596,6 +571,23 @@ public sealed partial class ShellViewModel : ObservableObject
             secret);
     }
 
+    private ConnectionProfile CreateTransientProfile()
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new ConnectionProfile(
+            Guid.NewGuid(),
+            ProfileName.Trim(),
+            Host.Trim(),
+            Port,
+            Database.Trim(),
+            UserName.Trim(),
+            string.IsNullOrWhiteSpace(Charset) ? null : Charset!.Trim(),
+            string.IsNullOrWhiteSpace(Role) ? null : Role!.Trim(),
+            false,
+            now,
+            now);
+    }
+
     private async Task<ConnectionProfile?> FindProfileByNameAsync(string profileName, CancellationToken cancellationToken)
     {
         connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
@@ -604,51 +596,21 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private void ApplyProfile(ConnectionProfile profile)
     {
-        isApplyingProfile = true;
-        try
-        {
-            ProfileName = profile.Name;
-            Host = profile.Host;
-            Port = profile.Port;
-            Database = profile.Database;
-            UserName = profile.UserName;
-            Charset = profile.Charset;
-            Role = profile.Role;
-            RememberPassword = profile.HasSavedPassword;
-            HasSavedPasswordForProfile = profile.HasSavedPassword;
-        }
-        finally
-        {
-            isApplyingProfile = false;
-        }
+        ProfileName = profile.Name;
+        Host = profile.Host;
+        Port = profile.Port;
+        Database = profile.Database;
+        UserName = profile.UserName;
+        Charset = profile.Charset;
+        Role = profile.Role;
+        RememberPassword = profile.HasSavedPassword;
+        HasSavedPasswordForProfile = profile.HasSavedPassword;
     }
 
     private void UpdatePasswordStatusFromProfileName()
     {
         var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase));
         HasSavedPasswordForProfile = profile?.HasSavedPassword == true;
-    }
-
-    private async Task ForgetSavedPasswordForCurrentProfileAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var profile = await FindProfileByNameAsync(ProfileName, cancellationToken);
-            if (profile?.HasSavedPassword != true)
-            {
-                HasSavedPasswordForProfile = false;
-                return;
-            }
-
-            await credentialStore.DeleteAsync(profile.Id, cancellationToken);
-            connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
-            HasSavedPasswordForProfile = false;
-            OperationMessage = AppStrings.PasswordForgottenForProfile;
-        }
-        catch (Exception ex)
-        {
-            OperationMessage = ex.Message;
-        }
     }
 
     private static CredentialSecret? CreateSecretCopy(byte[]? bytes)
@@ -676,11 +638,11 @@ public sealed partial class ShellViewModel : ObservableObject
         ClearActiveSessionCredential();
     }
 
-    private async Task PersistMonitoringSnapshotAsync(MonitoringSnapshot snapshot)
+    private async Task PersistMonitoringSnapshotAsync(MonitoringSnapshot snapshot, CancellationToken cancellationToken)
     {
         try
         {
-            await historyWriter.WriteMonitoringSnapshotsAsync(ActiveConnection?.ProfileId, [snapshot], CancellationToken.None);
+            await historyWriter.WriteMonitoringSnapshotsAsync(ActiveConnection?.ProfileId, [snapshot], cancellationToken);
         }
         catch (Exception ex)
         {
@@ -690,7 +652,14 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private async void ProfilerWorkspace_OnProfilerEventReceived(object? sender, Application.Profiler.ProfilerEvent profilerEvent)
     {
-        await RunDiagnosticsAsync(profilerEvent);
+        try
+        {
+            await RunDiagnosticsAsync(profilerEvent);
+        }
+        catch (Exception ex)
+        {
+            OperationMessage = $"Falha ao processar diagnóstico do profiler: {ex.Message}";
+        }
     }
 
     private async Task RunDiagnosticsAsync(MonitoringSnapshot snapshot)

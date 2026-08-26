@@ -54,6 +54,16 @@ public partial class App : System.Windows.Application
             MainWindow = mainWindow;
             mainWindow.Show();
         }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex, "Falha ao inicializar o Firebird Admin.");
+            MessageBox.Show(
+                $"Não foi possível iniciar o Firebird Admin.{Environment.NewLine}{ex.Message}",
+                "Firebird Admin",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(-1);
+        }
         finally
         {
             splash.Close();

@@ -38,7 +38,6 @@ public partial class MainWindow
         try
         {
             await viewModel.LoadInitialProfileAsync();
-            await RefreshPasswordBoxFromProfileAsync();
         }
         catch (Exception ex)
         {
@@ -59,11 +58,11 @@ public partial class MainWindow
             return;
         }
 
-        if (e.PropertyName is nameof(ShellViewModel.ProfileName) or
-            nameof(ShellViewModel.HasSavedPasswordForProfile) or
-            nameof(ShellViewModel.ActiveConnection))
+        if (e.PropertyName == nameof(ShellViewModel.ProfileName) &&
+            passwordInput is not null &&
+            !passwordInput.IsKeyboardFocusWithin)
         {
-            _ = RefreshPasswordBoxFromProfileAsync();
+            passwordInput.Clear();
         }
     }
 
@@ -149,7 +148,7 @@ public partial class MainWindow
         {
             if (viewModel.SelectedWorkspace == ShellWorkspace.Settings)
             {
-                await viewModel.ConnectAsync(CurrentPassword);
+                await RunUiOperationAsync(() => viewModel.ConnectAsync(CurrentPassword));
                 e.Handled = true;
             }
 
@@ -158,7 +157,7 @@ public partial class MainWindow
 
         if (e.Key == Key.F5)
         {
-            await viewModel.RefreshSelectedWorkspaceAsync();
+            await RunUiOperationAsync(() => viewModel.RefreshSelectedWorkspaceAsync());
             e.Handled = true;
             return;
         }
@@ -194,7 +193,6 @@ public partial class MainWindow
     private void PasswordInput_OnLoaded(object sender, System.Windows.RoutedEventArgs e)
     {
         passwordInput = (PasswordBox)sender;
-        _ = RefreshPasswordBoxFromProfileAsync();
     }
 
     private void PasswordInput_OnUnloaded(object sender, System.Windows.RoutedEventArgs e)
@@ -205,43 +203,19 @@ public partial class MainWindow
         }
     }
 
-    private async Task RefreshPasswordBoxFromProfileAsync()
-    {
-        if (passwordInput is null)
-        {
-            return;
-        }
-
-        if (passwordInput.IsKeyboardFocusWithin)
-        {
-            return;
-        }
-
-        try
-        {
-            using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
-            passwordInput.Password = secret?.RevealAsString() ?? string.Empty;
-        }
-        catch (Exception ex)
-        {
-            viewModel.OperationMessage = ex.Message;
-            passwordInput.Password = string.Empty;
-        }
-    }
-
     private async void SaveProfileButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.SaveProfileAsync(CurrentPassword);
+        await RunUiOperationAsync(() => viewModel.SaveProfileAsync(CurrentPassword));
     }
 
     private async void TestConnectionButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.TestConnectionAsync(CurrentPassword);
+        await RunUiOperationAsync(() => viewModel.TestConnectionAsync(CurrentPassword));
     }
 
     private async void ConnectButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.ConnectAsync(CurrentPassword);
+        await RunUiOperationAsync(() => viewModel.ConnectAsync(CurrentPassword));
     }
 
     private void SelectDatabaseButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
@@ -261,12 +235,12 @@ public partial class MainWindow
 
     private async void StartProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.StartProfilerAsync(CurrentPassword);
+        await RunUiOperationAsync(() => viewModel.StartProfilerAsync(CurrentPassword));
     }
 
     private async void StopProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.StopProfilerAsync();
+        await RunUiOperationAsync(() => viewModel.StopProfilerAsync());
     }
 
     private void PauseProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
@@ -281,62 +255,62 @@ public partial class MainWindow
 
     private async void SearchHistoryButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.HistoryWorkspace.SearchAsync();
+        await RunUiOperationAsync(() => viewModel.HistoryWorkspace.SearchAsync());
     }
 
     private async void ExportHistoryCsvButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.HistoryWorkspace.ExportCsvAsync();
+        await RunUiOperationAsync(() => viewModel.HistoryWorkspace.ExportCsvAsync());
     }
 
     private async void ExportHistoryJsonButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.HistoryWorkspace.ExportJsonAsync();
+        await RunUiOperationAsync(() => viewModel.HistoryWorkspace.ExportJsonAsync());
     }
 
     private async void RefreshAlertsButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.AlertsCenter.LoadAsync();
+        await RunUiOperationAsync(() => viewModel.AlertsCenter.LoadAsync());
     }
 
     private async void AcknowledgeAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.AlertsCenter.AcknowledgeAsync();
+        await RunUiOperationAsync(() => viewModel.AlertsCenter.AcknowledgeAsync());
     }
 
     private async void ResolveAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.AlertsCenter.ResolveAsync();
+        await RunUiOperationAsync(() => viewModel.AlertsCenter.ResolveAsync());
     }
 
     private async void ReopenAlertButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.AlertsCenter.ReopenAsync();
+        await RunUiOperationAsync(() => viewModel.AlertsCenter.ReopenAsync());
     }
 
     private async void LoadMetadataCatalogButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.MetadataExplorer.LoadCatalogAsync();
+        await RunUiOperationAsync(() => viewModel.MetadataExplorer.LoadCatalogAsync());
     }
 
     private async void RefreshMetadataCatalogButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.MetadataExplorer.RefreshCatalogAsync();
+        await RunUiOperationAsync(() => viewModel.MetadataExplorer.RefreshCatalogAsync());
     }
 
     private async void RefreshMetadataObjectButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.MetadataExplorer.RefreshSelectedAsync();
+        await RunUiOperationAsync(() => viewModel.MetadataExplorer.RefreshSelectedAsync());
     }
 
     private async void ValidateMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.MaintenanceWorkspace.ValidateAsync();
+        await RunUiOperationAsync(() => viewModel.MaintenanceWorkspace.ValidateAsync());
     }
 
     private async void ExecuteMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.MaintenanceWorkspace.ExecuteAsync();
+        await RunUiOperationAsync(() => viewModel.MaintenanceWorkspace.ExecuteAsync());
     }
 
     private void CancelMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
@@ -346,17 +320,17 @@ public partial class MainWindow
 
     private async void RefreshMaintenanceHistoryButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.MaintenanceWorkspace.LoadHistoryAsync();
+        await RunUiOperationAsync(() => viewModel.MaintenanceWorkspace.LoadHistoryAsync());
     }
 
     private async void LoadSecurityButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.SecurityWorkspace.LoadAsync();
+        await RunUiOperationAsync(() => viewModel.SecurityWorkspace.LoadAsync());
     }
 
     private async void RefreshSecurityButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        await viewModel.SecurityWorkspace.RefreshAsync();
+        await RunUiOperationAsync(() => viewModel.SecurityWorkspace.RefreshAsync());
     }
 
     private void MarkSecurityStaleButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
@@ -367,6 +341,22 @@ public partial class MainWindow
     private void ExitButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         Close();
+    }
+
+    private async Task RunUiOperationAsync(Func<Task> operation)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (OperationCanceledException)
+        {
+            viewModel.OperationMessage = "Operação cancelada.";
+        }
+        catch (Exception ex)
+        {
+            viewModel.OperationMessage = ex.Message;
+        }
     }
 
     private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

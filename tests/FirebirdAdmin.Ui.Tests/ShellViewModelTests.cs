@@ -209,7 +209,7 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task ConnectAsync_ShouldRequirePassword_WhenPasswordBoxIsEmptyEvenWithSavedPassword()
+    public async Task ConnectAsync_ShouldUseSavedPasswordWithoutRevealingItInThePasswordBox()
     {
         var profile = new ConnectionProfile(
             Guid.NewGuid(),
@@ -234,39 +234,13 @@ public sealed class ShellViewModelTests
         await viewModel.LoadInitialProfileAsync();
         await viewModel.ConnectAsync(string.Empty);
 
-        connectionService.ConnectionCount.Should().Be(0);
-        profileService.LastRequest.Should().BeNull();
+        connectionService.ConnectionCount.Should().Be(1);
+        connectionService.LastPasswordLength.Should().Be("saved-secret".Length);
+        profileService.LastRequest.Should().NotBeNull();
         credentialStore.SaveCount.Should().Be(0);
         credentialStore.DeleteCount.Should().Be(0);
         viewModel.HasSavedPasswordForProfile.Should().BeTrue();
-        viewModel.OperationMessage.Should().Be(AppStrings.PasswordRequired);
-    }
-
-    [Fact]
-    public async Task LoadPasswordForCurrentProfileAsync_ShouldReturnSavedPasswordForPasswordBoxFill()
-    {
-        var profile = new ConnectionProfile(
-            Guid.NewGuid(),
-            "Local",
-            "localhost",
-            3050,
-            "employee.fdb",
-            "SYSDBA",
-            "UTF8",
-            null,
-            true,
-            DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow);
-        var viewModel = CreateViewModel(
-            connectionProfileService: new FakeConnectionProfileService(profile),
-            credentialStore: new FakeCredentialStore("saved-secret"));
-
-        await viewModel.LoadInitialProfileAsync();
-
-        using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
-
-        secret.Should().NotBeNull();
-        secret!.RevealAsString().Should().Be("saved-secret");
+        viewModel.OperationMessage.Should().Be(AppStrings.ConnectedStatus);
     }
 
     [Fact]
@@ -342,7 +316,7 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
-    public async Task RememberPasswordUnchecked_ShouldForgetSavedPasswordAndStayUncheckedAfterConnect()
+    public async Task RememberPasswordUnchecked_ShouldNotDeleteSavedPasswordUntilProfileIsSaved()
     {
         var profile = new ConnectionProfile(
             Guid.NewGuid(),
@@ -365,28 +339,35 @@ public sealed class ShellViewModelTests
         await viewModel.LoadInitialProfileAsync();
 
         viewModel.RememberPassword = false;
-        await WaitUntilAsync(() => credentialStore.DeleteCount == 1);
         await viewModel.ConnectAsync("masterkey");
 
-        credentialStore.DeleteCount.Should().Be(1);
+        credentialStore.DeleteCount.Should().Be(0);
         credentialStore.SaveCount.Should().Be(0);
         viewModel.RememberPassword.Should().BeFalse();
-        viewModel.HasSavedPasswordForProfile.Should().BeFalse();
-        viewModel.PasswordStatusText.Should().Be(AppStrings.PasswordNotSavedForProfile);
+        viewModel.HasSavedPasswordForProfile.Should().BeTrue();
+        viewModel.PasswordStatusText.Should().Be(AppStrings.PasswordSavedForProfile);
     }
 
     [Fact]
-    public async Task LoadPasswordForCurrentProfileAsync_ShouldReturnActiveSessionPassword_WhenReturningToSettingsWithoutSavedPassword()
+    public async Task TestConnectionAsync_ShouldNotPersistANewProfileOrPassword()
     {
+        var profileService = new FakeConnectionProfileService();
+        var credentialStore = new FakeCredentialStore();
         var connectionService = new FakeFirebirdConnectionService(false);
-        var viewModel = CreateViewModel(firebirdConnectionService: connectionService);
+        var viewModel = CreateViewModel(
+            connectionProfileService: profileService,
+            credentialStore: credentialStore,
+            firebirdConnectionService: connectionService);
+        viewModel.RememberPassword = true;
 
-        await viewModel.ConnectAsync("masterkey");
-        using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
+        await viewModel.TestConnectionAsync("masterkey");
 
         connectionService.ConnectionCount.Should().Be(1);
-        secret.Should().NotBeNull();
-        secret!.RevealAsString().Should().Be("masterkey");
+        profileService.LastRequest.Should().BeNull();
+        credentialStore.SaveCount.Should().Be(0);
+        credentialStore.DeleteCount.Should().Be(0);
+        viewModel.ActiveConnection.Should().BeNull();
+        viewModel.OperationMessage.Should().Be(AppStrings.TestConnectionSucceeded);
     }
 
     [Fact]
