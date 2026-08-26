@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Threading;
 using System.Windows;
 
 namespace FirebirdAdmin.Presentation.Wpf;
@@ -135,7 +136,7 @@ public partial class MainWindow
         Closed -= MainWindow_OnClosed;
     }
 
-    private async void MainWindow_OnClosing(object? sender, CancelEventArgs e)
+    private void MainWindow_OnClosing(object? sender, CancelEventArgs e)
     {
         if (shutdownCompleted)
         {
@@ -149,9 +150,26 @@ public partial class MainWindow
         }
 
         shutdownStarted = true;
-        await RunUiOperationAsync(() => viewModel.ShutdownAsync());
+        _ = CompleteShutdownAndCloseAsync();
+    }
+
+    private async Task CompleteShutdownAndCloseAsync()
+    {
+        try
+        {
+            await viewModel.ShutdownAsync();
+        }
+        catch (OperationCanceledException)
+        {
+            viewModel.OperationMessage = "Operação cancelada.";
+        }
+        catch (Exception ex)
+        {
+            viewModel.OperationMessage = ex.Message;
+        }
+
         shutdownCompleted = true;
-        Close();
+        await Dispatcher.InvokeAsync(Close, DispatcherPriority.Background);
     }
 
     private string CurrentPassword => passwordInput?.Password ?? string.Empty;
