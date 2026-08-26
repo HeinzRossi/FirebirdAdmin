@@ -153,7 +153,7 @@ public sealed partial class MetadataExplorerViewModel(IMetadataCatalogService ca
             return;
         }
 
-        _ = LoadDetailsAsync(value.Reference, trackHistory: true, CancellationToken.None);
+        _ = LoadDetailsSafelyAsync(value.Reference, trackHistory: true, CancellationToken.None);
     }
 
     partial void OnSelectedDetailsChanged(MetadataObjectDetails? value)
@@ -194,6 +194,27 @@ public sealed partial class MetadataExplorerViewModel(IMetadataCatalogService ca
         SelectedDetails = await catalogService.LoadDetailsAsync(activeConnection, password, reference, cancellationToken);
         Message = SelectedDetails.Error is null ? "Detalhes carregados." : $"Falha no detalhe: {SelectedDetails.Error}";
         OnHistoryChanged();
+    }
+
+    private async Task LoadDetailsSafelyAsync(MetadataObjectReference reference, bool trackHistory, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await LoadDetailsAsync(reference, trackHistory, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ObjectDisposedException) when (disposed)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (!disposed)
+            {
+                Message = ex.Message;
+            }
+        }
     }
 
     private async Task NavigateToAsync(MetadataObjectReference reference, CancellationToken cancellationToken)

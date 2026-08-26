@@ -416,6 +416,27 @@ public sealed class ShellViewModelTests
         viewModel.HasActiveConnection.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ShutdownAsync_ShouldStopProfilerAndMonitoringAndBeIdempotent()
+    {
+        var profilerService = new FakeProfilerSessionService();
+        var monitoringService = new FakeMonitoringSessionService();
+        var viewModel = CreateViewModel(
+            monitoringSessionService: monitoringService,
+            profilerSessionService: profilerService);
+
+        await viewModel.ConnectAsync("masterkey");
+        await viewModel.StartProfilerAsync(string.Empty);
+
+        await viewModel.ShutdownAsync();
+        await viewModel.ShutdownAsync();
+
+        profilerService.StopCount.Should().Be(1);
+        monitoringService.StopCount.Should().BeGreaterThanOrEqualTo(1);
+        viewModel.HasActiveConnection.Should().BeFalse();
+        viewModel.ConnectionState.Should().Be(ShellConnectionState.Disconnected);
+    }
+
     private static ShellViewModel CreateViewModel(
         bool connectionShouldFail = false,
         FakeMetadataCatalogService? metadataService = null,
@@ -423,6 +444,7 @@ public sealed class ShellViewModelTests
         IConnectionProfileService? connectionProfileService = null,
         ICredentialStore? credentialStore = null,
         IFirebirdConnectionService? firebirdConnectionService = null,
+        IMonitoringSessionService? monitoringSessionService = null,
         IProfilerSessionService? profilerSessionService = null,
         IThemeService? themeService = null)
     {
@@ -430,7 +452,7 @@ public sealed class ShellViewModelTests
             connectionProfileService ?? new FakeConnectionProfileService(),
             credentialStore ?? new FakeCredentialStore(),
             firebirdConnectionService ?? new FakeFirebirdConnectionService(connectionShouldFail),
-            new FakeMonitoringSessionService(),
+            monitoringSessionService ?? new FakeMonitoringSessionService(),
             new FakeHistoryWriter(),
             new DiagnosticEngine([new FakeDiagnosticRule()]),
             new TransactionsWorkspaceViewModel(),
@@ -605,6 +627,7 @@ public sealed class ShellViewModelTests
             []);
 
         public MonitoringSessionStatus Status { get; private set; } = new(PollingState.Stopped, "Stopped", DateTimeOffset.UtcNow);
+        public int StopCount { get; private set; }
 
         public Task<MonitoringSession> StartAsync(
             ConnectionContext connection,
@@ -620,6 +643,7 @@ public sealed class ShellViewModelTests
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
+            StopCount++;
             Status = new MonitoringSessionStatus(PollingState.Stopped, "Stopped", DateTimeOffset.UtcNow);
             return Task.CompletedTask;
         }
@@ -634,6 +658,7 @@ public sealed class ShellViewModelTests
     private sealed class FakeProfilerSessionService : IProfilerSessionService
     {
         public int StartCount { get; private set; }
+        public int StopCount { get; private set; }
         public int LastPasswordLength { get; private set; }
         public ProfilerState State { get; private set; } = ProfilerState.Disconnected;
 
@@ -647,6 +672,7 @@ public sealed class ShellViewModelTests
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
+            StopCount++;
             State = ProfilerState.Ready;
             return Task.CompletedTask;
         }

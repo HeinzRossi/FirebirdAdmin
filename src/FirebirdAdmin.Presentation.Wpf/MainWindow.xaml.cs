@@ -19,6 +19,8 @@ public partial class MainWindow
     private PasswordBox? passwordInput;
     private Rect? restoreBoundsBeforeOperationalMaximize;
     private bool isOperationalMaximized;
+    private bool shutdownStarted;
+    private bool shutdownCompleted;
 
     public MainWindow(ShellViewModel viewModel)
     {
@@ -28,6 +30,7 @@ public partial class MainWindow
         viewModel.Dashboard.ActivityChanged += Dashboard_OnActivityChanged;
         viewModel.PropertyChanged += ShellViewModel_OnPropertyChanged;
         Loaded += MainWindow_OnLoaded;
+        Closing += MainWindow_OnClosing;
         Closed += MainWindow_OnClosed;
         UpdateActivityPlot();
         UpdateMaximizeRestoreGlyph();
@@ -127,9 +130,28 @@ public partial class MainWindow
     {
         viewModel.Dashboard.ActivityChanged -= Dashboard_OnActivityChanged;
         viewModel.PropertyChanged -= ShellViewModel_OnPropertyChanged;
-        viewModel.ClearSessionCredentialForShutdown();
         Loaded -= MainWindow_OnLoaded;
+        Closing -= MainWindow_OnClosing;
         Closed -= MainWindow_OnClosed;
+    }
+
+    private async void MainWindow_OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (shutdownCompleted)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        if (shutdownStarted)
+        {
+            return;
+        }
+
+        shutdownStarted = true;
+        await RunUiOperationAsync(() => viewModel.ShutdownAsync());
+        shutdownCompleted = true;
+        Close();
     }
 
     private string CurrentPassword => passwordInput?.Password ?? string.Empty;

@@ -31,7 +31,10 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IThemeService themeService;
     private IReadOnlyList<ConnectionProfile> connectionProfiles = [];
     private CancellationTokenSource? monitoringReadCts;
+    private readonly object backgroundTasksGate = new();
+    private readonly List<Task> backgroundTasks = [];
     private byte[]? activeSessionCredentialBytes;
+    private int shutdownStarted;
 
     [ObservableProperty]
     private string profileName = "Local";
@@ -319,6 +322,59 @@ public sealed partial class ShellViewModel : ObservableObject
         await ConnectCoreAsync(password, setActiveConnection: true, cancellationToken);
     }
 
+    public async Task ShutdownAsync(CancellationToken cancellationToken = default)
+    {
+        if (Interlocked.Exchange(ref shutdownStarted, 1) == 1)
+        {
+            return;
+        }
+
+        using var shutdownCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        shutdownCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+        try
+        {
+            await TryShutdownOperationAsync(
+                async token =>
+                {
+                    if (ProfilerWorkspace.CanStop)
+                    {
+                        await StopProfilerAsync(token);
+                    }
+                },
+                shutdownCts.Token);
+
+            MaintenanceWorkspace.Cancel();
+
+            await TryShutdownOperationAsync(
+                async token =>
+                {
+                    var readerCts = monitoringReadCts;
+                    monitoringReadCts = null;
+                    if (readerCts is not null)
+                    {
+                        await readerCts.CancelAsync();
+                        readerCts.Dispose();
+                    }
+
+                    await monitoringSessionService.StopAsync(token);
+                },
+                shutdownCts.Token);
+
+            await TryShutdownOperationAsync(WaitForBackgroundTasksAsync, shutdownCts.Token);
+        }
+        finally
+        {
+            ProfilerWorkspace.ProfilerEventReceived -= ProfilerWorkspace_OnProfilerEventReceived;
+            MetadataExplorer.Dispose();
+            MaintenanceWorkspace.Dispose();
+            SecurityWorkspace.Dispose();
+            ClearActiveSessionCredential();
+            ActiveConnection = null;
+            ConnectionState = ShellConnectionState.Disconnected;
+        }
+    }
+
     [RelayCommand]
     public void SelectWorkspace(ShellWorkspace workspace)
     {
@@ -456,9 +512,9 @@ public sealed partial class ShellViewModel : ObservableObject
                 MetadataExplorer.SetConnection(context, metadataSecret);
                 MaintenanceWorkspace.SetConnection(context, maintenanceSecret);
                 SecurityWorkspace.SetConnection(context, securitySecret);
-                _ = MetadataExplorer.LoadCatalogAsync();
-                _ = MaintenanceWorkspace.LoadHistoryAsync();
-                _ = SecurityWorkspace.LoadAsync();
+                RunBackgroundTask(() => MetadataExplorer.LoadCatalogAsync(), "Falha ao carregar metadata");
+                RunBackgroundTask(() => MaintenanceWorkspace.LoadHistoryAsync(), "Falha ao carregar histórico de manutenção");
+                RunBackgroundTask(() => SecurityWorkspace.LoadAsync(), "Falha ao carregar segurança");
                 await StartMonitoringAsync(profile, monitoringSecret, context, cancellationToken);
             }
 
@@ -526,7 +582,7 @@ public sealed partial class ShellViewModel : ObservableObject
 
         await (monitoringReadCts?.CancelAsync() ?? Task.CompletedTask);
         monitoringReadCts = new CancellationTokenSource();
-        _ = ReadMonitoringSnapshotsAsync(monitoringReadCts.Token);
+        RunBackgroundTask(() => ReadMonitoringSnapshotsAsync(monitoringReadCts.Token), "Falha ao ler monitoramento");
     }
 
     private async Task ReadMonitoringSnapshotsAsync(CancellationToken cancellationToken)
@@ -672,5 +728,82 @@ public sealed partial class ShellViewModel : ObservableObject
     {
         var results = diagnosticEngine.Evaluate(profilerEvent, ActiveConnection?.ProfileId);
         await AlertsCenter.AcceptDiagnosticResultsAsync(results);
+    }
+
+    private void RunBackgroundTask(Func<Task> operation, string failureMessage)
+    {
+        var task = RunBackgroundTaskCoreAsync(operation, failureMessage);
+        lock (backgroundTasksGate)
+        {
+            backgroundTasks.Add(task);
+        }
+
+        _ = task.ContinueWith(
+            completedTask =>
+            {
+                lock (backgroundTasksGate)
+                {
+                    backgroundTasks.Remove(completedTask);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    private async Task RunBackgroundTaskCoreAsync(Func<Task> operation, string failureMessage)
+    {
+        try
+        {
+            await operation();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ObjectDisposedException) when (Volatile.Read(ref shutdownStarted) == 1)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (Volatile.Read(ref shutdownStarted) == 0)
+            {
+                OperationMessage = $"{failureMessage}: {ex.Message}";
+            }
+        }
+    }
+
+    private async Task WaitForBackgroundTasksAsync(CancellationToken cancellationToken)
+    {
+        Task[] tasks;
+        lock (backgroundTasksGate)
+        {
+            tasks = backgroundTasks.ToArray();
+        }
+
+        if (tasks.Length == 0)
+        {
+            return;
+        }
+
+        await Task.WhenAll(tasks).WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+    }
+
+    private static async Task TryShutdownOperationAsync(
+        Func<CancellationToken, Task> operation,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await operation(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (TimeoutException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 }

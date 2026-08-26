@@ -72,13 +72,33 @@ public partial class App : System.Windows.Application
 
     protected override async void OnExit(ExitEventArgs e)
     {
-        if (host is not null)
+        try
         {
-            await host.StopAsync(TimeSpan.FromSeconds(5));
-            host.Dispose();
+            if (host is not null)
+            {
+                try
+                {
+                    await host.StopAsync(TimeSpan.FromSeconds(5));
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Falha ao parar host durante encerramento.");
+                }
+                finally
+                {
+                    host.Dispose();
+                    host = null;
+                }
+            }
         }
-
-        Log.CloseAndFlush();
-        base.OnExit(e);
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Falha inesperada durante encerramento.");
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+            base.OnExit(e);
+        }
     }
 }
