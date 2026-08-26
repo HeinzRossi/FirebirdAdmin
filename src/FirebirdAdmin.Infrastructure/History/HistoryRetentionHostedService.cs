@@ -17,17 +17,17 @@ public sealed class HistoryRetentionHostedService(
             try
             {
                 await retentionPolicyService.ApplyRetentionAsync(stoppingToken);
+                await Task.Delay(Interval, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
+                logger.LogInformation("Serviço de retenção do histórico encerrado.");
                 break;
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Falha ao aplicar a política de retenção do histórico.");
             }
-
-            await Task.Delay(Interval, stoppingToken);
         }
     }
 }

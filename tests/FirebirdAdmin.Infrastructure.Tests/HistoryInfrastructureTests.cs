@@ -175,6 +175,38 @@ public sealed class HistoryInfrastructureTests
     }
 
     [Fact]
+    public async Task RetentionHostedService_ShouldStopWithoutTaskCanceledExceptionDuringDelay()
+    {
+        var retention = new ControllableRetentionPolicyService();
+        var service = new HistoryRetentionHostedService(
+            retention,
+            NullLogger<HistoryRetentionHostedService>.Instance);
+
+        await service.StartAsync(CancellationToken.None);
+        await retention.WaitForApplyAsync();
+
+        var act = async () => await service.StopAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task RetentionHostedService_ShouldStopWithoutTaskCanceledExceptionDuringRetention()
+    {
+        var retention = new BlockingRetentionPolicyService();
+        var service = new HistoryRetentionHostedService(
+            retention,
+            NullLogger<HistoryRetentionHostedService>.Instance);
+
+        await service.StartAsync(CancellationToken.None);
+        await retention.WaitForApplyAsync();
+
+        var act = async () => await service.StopAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task Export_ShouldCreateCsvAndJsonWithoutSecrets()
     {
         using var root = CreateInitializedRoot(out var paths);
@@ -246,5 +278,47 @@ public sealed class HistoryInfrastructureTests
         paths = new ApplicationDataPaths(root.Path);
         _ = new InfrastructureTestDbContextFactory(paths.DatabasePath);
         return root;
+    }
+
+    private sealed class ControllableRetentionPolicyService : IRetentionPolicyService
+    {
+        private readonly TaskCompletionSource applied = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<RetentionPolicy> GetPolicyAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new RetentionPolicy());
+        }
+
+        public Task ApplyRetentionAsync(CancellationToken cancellationToken)
+        {
+            applied.TrySetResult();
+            return Task.CompletedTask;
+        }
+
+        public Task WaitForApplyAsync()
+        {
+            return applied.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    private sealed class BlockingRetentionPolicyService : IRetentionPolicyService
+    {
+        private readonly TaskCompletionSource applied = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<RetentionPolicy> GetPolicyAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new RetentionPolicy());
+        }
+
+        public async Task ApplyRetentionAsync(CancellationToken cancellationToken)
+        {
+            applied.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+
+        public Task WaitForApplyAsync()
+        {
+            return applied.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
     }
 }
