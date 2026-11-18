@@ -80,6 +80,26 @@ public sealed class ConnectionProfileServiceTests
     }
 
     [Fact]
+    public async Task SaveAsync_ShouldMatchExistingProfileNameCaseInsensitively()
+    {
+        using var fixture = TempDatabaseFixture.Create();
+        var factory = new InfrastructureTestDbContextFactory(fixture.DatabasePath);
+        var credentialStore = new DpapiCredentialStore(factory);
+        var service = new ConnectionProfileService(factory, credentialStore);
+
+        var first = await service.SaveAsync(CreateRequest(null, rememberPassword: false), CancellationToken.None);
+        var second = await service.SaveAsync(
+            CreateRequest(null, rememberPassword: false) with { Name = "local", Host = "server-02" },
+            CancellationToken.None);
+
+        second.Id.Should().Be(first.Id);
+        second.Host.Should().Be("server-02");
+
+        await using var dbContext = factory.CreateDbContext();
+        dbContext.ConnectionProfiles.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task SaveAsync_ShouldPreserveSavedPasswordWhenUpdatingExistingProfileWithoutRememberPassword()
     {
         using var fixture = TempDatabaseFixture.Create();

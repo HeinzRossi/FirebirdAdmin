@@ -57,11 +57,15 @@ public sealed class MaintenanceService(
                 command,
                 new Progress<MaintenanceLogLine>(line =>
                 {
-                    logs.Add(line);
                     LogReceived?.Invoke(this, line);
-                    _ = historyStore.SaveLogAsync(line, CancellationToken.None);
                 }),
                 cancellationToken);
+
+            logs.AddRange(result.Logs);
+            foreach (var line in result.Logs)
+            {
+                await historyStore.SaveLogAsync(line, CancellationToken.None);
+            }
 
             var status = result.ExitCode == 0 ? MaintenanceOperationStatus.Succeeded : MaintenanceOperationStatus.Failed;
             ActiveOperation = ActiveOperation with

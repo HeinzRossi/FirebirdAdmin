@@ -347,8 +347,13 @@ public sealed partial class MaintenanceWorkspaceViewModel(
             return;
         }
 
-        executionCts?.Dispose();
-        password?.Dispose();
+        executionCts?.Cancel();
+        if (!IsRunning)
+        {
+            executionCts?.Dispose();
+            password?.Dispose();
+        }
+
         disposed = true;
     }
 }

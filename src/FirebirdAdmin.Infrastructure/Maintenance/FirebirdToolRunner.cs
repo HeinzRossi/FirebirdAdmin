@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using FirebirdAdmin.Application.Maintenance;
 using FirebirdAdmin.Infrastructure.Security;
 
@@ -12,7 +13,7 @@ public sealed class FirebirdToolRunner : IFirebirdToolRunner
         IProgress<MaintenanceLogLine> progress,
         CancellationToken cancellationToken)
     {
-        var logs = new List<MaintenanceLogLine>();
+        var logs = new ConcurrentQueue<MaintenanceLogLine>();
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
         {
@@ -51,7 +52,7 @@ public sealed class FirebirdToolRunner : IFirebirdToolRunner
         }
 
         await Task.WhenAll(outputTask, errorTask);
-        return new ToolExecutionResult(process.ExitCode, logs);
+        return new ToolExecutionResult(process.ExitCode, logs.OrderBy(line => line.Timestamp).ToArray());
     }
 
     private static async Task ReadLinesAsync(
@@ -59,7 +60,7 @@ public sealed class FirebirdToolRunner : IFirebirdToolRunner
         string stream,
         TextReader reader,
         IProgress<MaintenanceLogLine> progress,
-        List<MaintenanceLogLine> logs,
+        ConcurrentQueue<MaintenanceLogLine> logs,
         CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
@@ -74,10 +75,10 @@ public sealed class FirebirdToolRunner : IFirebirdToolRunner
         }
     }
 
-    private static void Report(Guid operationId, string stream, string text, IProgress<MaintenanceLogLine> progress, List<MaintenanceLogLine> logs)
+    private static void Report(Guid operationId, string stream, string text, IProgress<MaintenanceLogLine> progress, ConcurrentQueue<MaintenanceLogLine> logs)
     {
         var line = new MaintenanceLogLine(operationId, DateTimeOffset.UtcNow, stream, SecretMasker.MaskSecrets(text));
-        logs.Add(line);
+        logs.Enqueue(line);
         progress.Report(line);
     }
 

@@ -190,7 +190,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
             {
                 buffer.Add(profilerEvent);
                 ProfilerEventReceived?.Invoke(this, profilerEvent);
-                _ = PersistProfilerEventAsync(profilerEvent);
+                await PersistProfilerEventAsync(profilerEvent, cancellationToken);
 
                 if (State is not ProfilerState.PausedView)
                 {
@@ -271,11 +271,11 @@ public sealed partial class ProfilerWorkspaceViewModel(
         OnPropertyChanged(nameof(PauseResumeLabel));
     }
 
-    private async Task PersistProfilerEventAsync(ProfilerEvent profilerEvent)
+    private async Task PersistProfilerEventAsync(ProfilerEvent profilerEvent, CancellationToken cancellationToken)
     {
         try
         {
-            await historyWriter.WriteProfilerEventsAsync(activeConnectionProfileId, [profilerEvent], CancellationToken.None);
+            await historyWriter.WriteProfilerEventsAsync(activeConnectionProfileId, [profilerEvent], cancellationToken);
         }
         catch (Exception ex)
         {

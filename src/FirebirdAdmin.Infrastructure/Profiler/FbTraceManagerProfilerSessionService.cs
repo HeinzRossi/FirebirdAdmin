@@ -14,8 +14,13 @@ public sealed class FbTraceManagerProfilerSessionService(
 {
     private static readonly Regex TraceSessionStartedRegex = new(@"Trace session ID\s+(?<id>\d+)\s+started", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    private readonly Channel<ProfilerEvent> channel = Channel.CreateUnbounded<ProfilerEvent>(
-        new UnboundedChannelOptions { SingleReader = false, SingleWriter = true });
+    private readonly Channel<ProfilerEvent> channel = Channel.CreateBounded<ProfilerEvent>(
+        new BoundedChannelOptions(4096)
+        {
+            SingleReader = true,
+            SingleWriter = false,
+            FullMode = BoundedChannelFullMode.Wait
+        });
 
     private readonly object sync = new();
     private CancellationTokenSource? sessionCts;
@@ -35,6 +40,8 @@ public sealed class FbTraceManagerProfilerSessionService(
         CredentialSecret? password,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         lock (sync)
         {
             if (State is ProfilerState.Running or ProfilerState.Starting)
@@ -54,7 +61,7 @@ public sealed class FbTraceManagerProfilerSessionService(
             throw new InvalidOperationException("fbtracemgr não encontrado no toolset ativo.");
         }
 
-        sessionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        sessionCts = new CancellationTokenSource();
         passwordFetchPath = null;
         activeTraceManager = traceManager;
         activeConnection = options.Connection;
@@ -66,7 +73,7 @@ public sealed class FbTraceManagerProfilerSessionService(
         {
             if (passwordBytes.Length > 0)
             {
-                passwordFetchPath = Path.Combine(Path.GetTempPath(), $"firebird-admin-trace-pwd-{Guid.NewGuid():N}.tmp");
+                passwordFetchPath = CreatePrivateTemporaryPath("firebird-admin-trace-pwd", ".tmp");
                 WritePasswordFetchFile(passwordFetchPath, passwordBytes);
             }
         }
@@ -181,7 +188,7 @@ public sealed class FbTraceManagerProfilerSessionService(
         TraceConfigurationDialect dialect,
         CancellationToken cancellationToken)
     {
-        var attemptConfigPath = Path.Combine(Path.GetTempPath(), $"firebird-admin-trace-{Guid.NewGuid():N}.conf");
+        var attemptConfigPath = CreatePrivateTemporaryPath("firebird-admin-trace", ".conf");
         traceConfigPath = attemptConfigPath;
 
         File.WriteAllText(
@@ -673,6 +680,16 @@ public sealed class FbTraceManagerProfilerSessionService(
         }
     }
 
+    private static string CreatePrivateTemporaryPath(string prefix, string extension)
+    {
+        var directory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FirebirdAdmin",
+            "Temp");
+        Directory.CreateDirectory(directory);
+        return Path.Combine(directory, $"{prefix}-{Guid.NewGuid():N}{extension}");
+    }
+
     private string MaskTechnicalLine(string line)
     {
         var masked = SecretMasker.MaskSecrets(line);
@@ -804,13 +821,52 @@ public sealed class FbTraceManagerProfilerSessionService(
     private void CleanupTemporaryFiles()
     {
         DeleteIfExists(traceConfigPath);
-        DeleteIfExists(passwordFetchPath);
+        SecureDeleteIfExists(passwordFetchPath);
         traceConfigPath = null;
         passwordFetchPath = null;
         activeTraceSessionId = null;
         activeSessionName = null;
         activeTraceManager = null;
         activeConnection = null;
+    }
+
+    private static void SecureDeleteIfExists(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return;
+            }
+
+            var length = new FileInfo(path).Length;
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None))
+            {
+                var zeros = new byte[4096];
+                long remaining = length;
+                while (remaining > 0)
+                {
+                    var count = (int)Math.Min(zeros.Length, remaining);
+                    stream.Write(zeros, 0, count);
+                    remaining -= count;
+                }
+
+                stream.Flush(flushToDisk: true);
+            }
+
+            File.Delete(path);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
     }
 
     private static void DeleteIfExists(string? path)

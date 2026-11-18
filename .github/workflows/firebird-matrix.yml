@@ -18,9 +18,9 @@ jobs:
         shell: pwsh
         run: Start-Sleep -Seconds 30
       - name: Restore
-        run: dotnet restore FirebirdAdmin.sln
+        run: dotnet restore tests/FirebirdAdmin.IntegrationTests/FirebirdAdmin.IntegrationTests.csproj
       - name: Build
-        run: dotnet build FirebirdAdmin.sln --no-restore
+        run: dotnet build tests/FirebirdAdmin.IntegrationTests/FirebirdAdmin.IntegrationTests.csproj --configuration Release --no-restore
       - name: Integration tests
         shell: pwsh
         run: ./scripts/firebird-matrix-test.ps1

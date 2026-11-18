@@ -28,9 +28,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<IMaintenanceService, MaintenanceService>();
         services.AddSingleton<IMetadataCache, MetadataCache>();
         services.AddSingleton<IMetadataDdlBuilder, MetadataDdlBuilder>();
-        services.AddScoped<IMetadataCatalogService, MetadataCatalogService>();
+        services.AddSingleton<IMetadataCatalogService, MetadataCatalogService>();
         services.AddSingleton<ISecurityCache, SecurityCache>();
-        services.AddScoped<ISecurityCatalogService, SecurityCatalogService>();
+        services.AddSingleton<ISecurityCatalogService, SecurityCatalogService>();
         return services;
     }
 }

@@ -7,6 +7,7 @@ using FirebirdAdmin.Infrastructure.Persistence;
 using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace FirebirdAdmin.Infrastructure.Tests;
 
@@ -108,6 +109,28 @@ public sealed class HistoryInfrastructureTests
     }
 
     [Fact]
+    public async Task BufferedWriter_ShouldFlushPendingEventsWhenStopped()
+    {
+        using var root = CreateInitializedRoot(out var paths);
+        var connectionFactory = new SqliteConnectionFactory(paths);
+        var writer = new BufferedHistoryWriter(
+            new DapperHistoryWriter(connectionFactory),
+            NullLogger<BufferedHistoryWriter>.Instance);
+
+        await writer.StartAsync(CancellationToken.None);
+        await writer.WriteProfilerEventsAsync(
+            null,
+            [CreateTraceEvent(1, "SYSDBA", "select 1", null, null, null)],
+            CancellationToken.None);
+        await writer.StopAsync(CancellationToken.None);
+
+        await using var connection = connectionFactory.Create();
+        await connection.OpenAsync();
+        var count = await connection.ExecuteScalarAsync<long>("SELECT COUNT(*) FROM TraceEvents;");
+        count.Should().Be(1);
+    }
+
+    [Fact]
     public async Task WriterAndQuery_ShouldPersistMonitoringSnapshots()
     {
         using var root = CreateInitializedRoot(out var paths);
@@ -152,6 +175,38 @@ public sealed class HistoryInfrastructureTests
     }
 
     [Fact]
+    public async Task RetentionHostedService_ShouldStopWithoutTaskCanceledExceptionDuringDelay()
+    {
+        var retention = new ControllableRetentionPolicyService();
+        var service = new HistoryRetentionHostedService(
+            retention,
+            NullLogger<HistoryRetentionHostedService>.Instance);
+
+        await service.StartAsync(CancellationToken.None);
+        await retention.WaitForApplyAsync();
+
+        var act = async () => await service.StopAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task RetentionHostedService_ShouldStopWithoutTaskCanceledExceptionDuringRetention()
+    {
+        var retention = new BlockingRetentionPolicyService();
+        var service = new HistoryRetentionHostedService(
+            retention,
+            NullLogger<HistoryRetentionHostedService>.Instance);
+
+        await service.StartAsync(CancellationToken.None);
+        await retention.WaitForApplyAsync();
+
+        var act = async () => await service.StopAsync(CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
     public async Task Export_ShouldCreateCsvAndJsonWithoutSecrets()
     {
         using var root = CreateInitializedRoot(out var paths);
@@ -168,6 +223,30 @@ public sealed class HistoryInfrastructureTests
         File.Exists(csv.OutputPath).Should().BeTrue();
         File.Exists(json.OutputPath).Should().BeTrue();
         (await File.ReadAllTextAsync(csv.OutputPath)).Should().NotContain("masterkey");
+        (await File.ReadAllTextAsync(json.OutputPath)).Should().NotContain("masterkey");
+    }
+
+    [Fact]
+    public async Task Export_ShouldIncludeEveryPageAndNeutralizeCsvFormulas()
+    {
+        using var root = CreateInitializedRoot(out var paths);
+        var connectionFactory = new SqliteConnectionFactory(paths);
+        var writer = new DapperHistoryWriter(connectionFactory);
+        var query = new DapperHistoryQueryService(connectionFactory);
+        var export = new HistoryExportService(query, paths);
+        var events = Enumerable.Range(1, 501)
+            .Select(sequence => CreateTraceEvent(sequence, "=HYPERLINK(\"https://example.invalid\")", $"select {sequence}", null, null, null))
+            .ToArray();
+
+        await writer.WriteProfilerEventsAsync(null, events, CancellationToken.None);
+
+        var result = await export.ExportAsync(
+            new ExportRequest(new HistoryQuery(), ExportFormat.Csv),
+            CancellationToken.None);
+
+        result.RowCount.Should().Be(501);
+        var contents = await File.ReadAllTextAsync(result.OutputPath);
+        contents.Should().Contain("'=HYPERLINK");
     }
 
     private static ProfilerEvent CreateTraceEvent(
@@ -199,5 +278,47 @@ public sealed class HistoryInfrastructureTests
         paths = new ApplicationDataPaths(root.Path);
         _ = new InfrastructureTestDbContextFactory(paths.DatabasePath);
         return root;
+    }
+
+    private sealed class ControllableRetentionPolicyService : IRetentionPolicyService
+    {
+        private readonly TaskCompletionSource applied = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<RetentionPolicy> GetPolicyAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new RetentionPolicy());
+        }
+
+        public Task ApplyRetentionAsync(CancellationToken cancellationToken)
+        {
+            applied.TrySetResult();
+            return Task.CompletedTask;
+        }
+
+        public Task WaitForApplyAsync()
+        {
+            return applied.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    private sealed class BlockingRetentionPolicyService : IRetentionPolicyService
+    {
+        private readonly TaskCompletionSource applied = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<RetentionPolicy> GetPolicyAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new RetentionPolicy());
+        }
+
+        public async Task ApplyRetentionAsync(CancellationToken cancellationToken)
+        {
+            applied.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
+
+        public Task WaitForApplyAsync()
+        {
+            return applied.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
     }
 }

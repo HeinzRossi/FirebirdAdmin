@@ -38,12 +38,22 @@ public sealed class ConnectionProfileService(
 
         if (request.Id is { } id)
         {
-            entity = await dbContext.ConnectionProfiles.SingleAsync(profile => profile.Id == id, cancellationToken);
+            entity = await dbContext.ConnectionProfiles.SingleOrDefaultAsync(profile => profile.Id == id, cancellationToken)
+                ?? new ConnectionProfileEntity
+                {
+                    Id = id,
+                    CreatedAt = now
+                };
+
+            if (dbContext.Entry(entity).State == EntityState.Detached)
+            {
+                dbContext.ConnectionProfiles.Add(entity);
+            }
         }
         else
         {
             entity = await dbContext.ConnectionProfiles
-                .SingleOrDefaultAsync(profile => profile.Name == normalizedName, cancellationToken)
+                .SingleOrDefaultAsync(profile => profile.Name.ToUpper() == normalizedName.ToUpper(), cancellationToken)
                 ?? new ConnectionProfileEntity
                 {
                     Id = Guid.NewGuid(),

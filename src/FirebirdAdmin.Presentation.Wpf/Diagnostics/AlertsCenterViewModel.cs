@@ -98,12 +98,27 @@ public sealed partial class AlertsCenterViewModel(IAlertStore alertStore) : Obse
 
     partial void OnStatusFilterChanged(string value)
     {
-        _ = LoadAsync();
+        _ = LoadSafelyAsync();
     }
 
     partial void OnSeverityFilterChanged(string value)
     {
-        _ = LoadAsync();
+        _ = LoadSafelyAsync();
+    }
+
+    private async Task LoadSafelyAsync()
+    {
+        try
+        {
+            await LoadAsync();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Message = ex.Message;
+        }
     }
 
     private async Task SetSelectedStatusAsync(AlertStatus status, string? note, CancellationToken cancellationToken)
