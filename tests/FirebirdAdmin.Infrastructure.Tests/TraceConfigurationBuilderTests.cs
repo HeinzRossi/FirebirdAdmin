@@ -17,6 +17,7 @@ public sealed class TraceConfigurationBuilderTests
         config.Should().Contain("<database employee.fdb>");
         config.Should().Contain("enabled true");
         config.Should().Contain("log_statement_finish true");
+        config.Should().Contain("</database>");
     }
 
     [Fact]
@@ -31,14 +32,54 @@ public sealed class TraceConfigurationBuilderTests
         config.Should().Contain("print_perf = true");
     }
 
-    private static ProfilerOptions CreateOptions(string version)
+    [Fact]
+    public void Build_ShouldGenerateModernConfigForExplicitModernDialect()
+    {
+        var builder = new TraceConfigurationBuilder();
+        var options = CreateOptions("2.5.9", @"E:\DESENVOLVIMENTOGIT\RICS_BR\EXECUÇÃO\DB\RICS.GDB");
+
+        var config = builder.Build(options, TraceConfigurationDialect.Modern30Plus);
+
+        config.Should().Contain("database = RICS.GDB");
+        config.Should().Contain("{");
+        config.Should().Contain("enabled = true");
+        config.Should().NotContain("</database>");
+    }
+
+    [Fact]
+    public void Build_ShouldNotPlaceWindowsPathInsideLegacyDatabaseTagForFirebird25()
+    {
+        var builder = new TraceConfigurationBuilder();
+        var options = CreateOptions("2.5.9", @"E:\DESENVOLVIMENTOGIT\RICS_BR\EXECUÇÃO\DB\RICS.GDB");
+
+        var config = builder.Build(options, FirebirdServerVersion.Parse("2.5.9"));
+
+        config.Should().Contain("<database %RICS.GDB>");
+        config.Should().Contain("</database>");
+        config.Should().NotContain(@"E:\DESENVOLVIMENTOGIT");
+        config.Split(Environment.NewLine)[0].Should().NotContain(@"\");
+        config.Split(Environment.NewLine)[0].Should().NotContain("/");
+    }
+
+    [Fact]
+    public void Build_ShouldUseAliasAsLegacyDatabaseTargetForFirebird25()
+    {
+        var builder = new TraceConfigurationBuilder();
+        var options = CreateOptions("2.5.9", "employee");
+
+        var config = builder.Build(options, FirebirdServerVersion.Parse("2.5.9"));
+
+        config.Should().Contain("<database employee>");
+    }
+
+    private static ProfilerOptions CreateOptions(string version, string database = "employee.fdb")
     {
         var context = new ConnectionContext(
             Guid.NewGuid(),
             "Local",
             "localhost",
             3050,
-            "employee.fdb",
+            database,
             "SYSDBA",
             FirebirdServerVersion.Parse(version),
             new FirebirdCapabilities(true, true, true, true, true, "ok"),

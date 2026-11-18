@@ -34,21 +34,29 @@ public sealed class ConnectionProfileService(
         var now = DateTimeOffset.UtcNow;
         ConnectionProfileEntity entity;
 
+        var normalizedName = request.Name.Trim();
+
         if (request.Id is { } id)
         {
             entity = await dbContext.ConnectionProfiles.SingleAsync(profile => profile.Id == id, cancellationToken);
         }
         else
         {
-            entity = new ConnectionProfileEntity
+            entity = await dbContext.ConnectionProfiles
+                .SingleOrDefaultAsync(profile => profile.Name == normalizedName, cancellationToken)
+                ?? new ConnectionProfileEntity
+                {
+                    Id = Guid.NewGuid(),
+                    CreatedAt = now
+                };
+
+            if (dbContext.Entry(entity).State == EntityState.Detached)
             {
-                Id = Guid.NewGuid(),
-                CreatedAt = now
-            };
-            dbContext.ConnectionProfiles.Add(entity);
+                dbContext.ConnectionProfiles.Add(entity);
+            }
         }
 
-        entity.Name = request.Name.Trim();
+        entity.Name = normalizedName;
         entity.Host = request.Host.Trim();
         entity.Port = request.Port;
         entity.Database = request.Database.Trim();
@@ -56,11 +64,6 @@ public sealed class ConnectionProfileService(
         entity.Charset = NormalizeOptional(request.Charset);
         entity.Role = NormalizeOptional(request.Role);
         entity.UpdatedAt = now;
-
-        if (!request.RememberPassword)
-        {
-            entity.ProtectedPasswordBlob = null;
-        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

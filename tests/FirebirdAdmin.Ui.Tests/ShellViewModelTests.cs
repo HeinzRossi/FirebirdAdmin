@@ -17,6 +17,7 @@ using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Security;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Shell;
+using FirebirdAdmin.Presentation.Wpf.Theme;
 using FluentAssertions;
 
 namespace FirebirdAdmin.Ui.Tests;
@@ -41,6 +42,26 @@ public sealed class ShellViewModelTests
         viewModel.SelectedWorkspace.Should().Be(ShellWorkspace.Dashboard);
         viewModel.WorkspaceTitle.Should().Be(AppStrings.Dashboard);
         viewModel.NavigationItems.Should().HaveCount(9);
+        viewModel.NavigationItems.Should().OnlyContain(item => !string.IsNullOrWhiteSpace(item.IconGlyph));
+        viewModel.NavigationItems.Should().OnlyContain(item => !item.AccessText.Contains(item.Shortcut, StringComparison.Ordinal));
+        viewModel.ExitLabel.Should().Be(AppStrings.Exit);
+        viewModel.AboutLabel.Should().Be(AppStrings.About);
+        viewModel.IsAboutOpen.Should().BeFalse();
+        viewModel.CurrentTheme.Should().Be(AppTheme.Dark);
+        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeDark);
+        viewModel.TitleBarVersionText.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public void AboutCommands_ShouldToggleAboutState()
+    {
+        var viewModel = CreateViewModel();
+
+        viewModel.ShowAbout();
+        viewModel.IsAboutOpen.Should().BeTrue();
+
+        viewModel.CloseAbout();
+        viewModel.IsAboutOpen.Should().BeFalse();
     }
 
     [Fact]
@@ -99,7 +120,7 @@ public sealed class ShellViewModelTests
     {
         var viewModel = CreateViewModel();
         await viewModel.ConnectAsync("masterkey");
-        await viewModel.StartProfilerAsync("masterkey");
+        await viewModel.StartProfilerAsync(string.Empty);
         await WaitUntilAsync(() => viewModel.ProfilerWorkspace.EventCount == 1);
 
         viewModel.SelectWorkspace(ShellWorkspace.History);
@@ -107,6 +128,265 @@ public sealed class ShellViewModelTests
 
         viewModel.ProfilerWorkspace.EventCount.Should().Be(1);
         viewModel.ProfilerWorkspace.SelectedEvent.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task StartProfilerAsync_ShouldReuseActiveConnectionPasswordWithoutPromptingAgain()
+    {
+        var profilerService = new FakeProfilerSessionService();
+        var viewModel = CreateViewModel(profilerSessionService: profilerService);
+
+        await viewModel.ConnectAsync("masterkey");
+        await viewModel.StartProfilerAsync(string.Empty);
+
+        profilerService.StartCount.Should().Be(1);
+        profilerService.LastPasswordLength.Should().Be("masterkey".Length);
+        viewModel.ProfilerWorkspace.State.Should().Be(ProfilerState.Running);
+    }
+
+    [Fact]
+    public async Task StartProfilerAsync_ShouldUseSavedPassword_WhenSessionPasswordIsUnavailable()
+    {
+        var profilerService = new FakeProfilerSessionService();
+        var profileId = Guid.NewGuid();
+        var profileService = new FakeConnectionProfileService(
+            new ConnectionProfile(
+                profileId,
+                "Local",
+                "localhost",
+                3050,
+                "employee.fdb",
+                "SYSDBA",
+                "UTF8",
+                null,
+                true,
+                DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow));
+        var credentialStore = new FakeCredentialStore("saved-secret");
+        var viewModel = CreateViewModel(
+            connectionProfileService: profileService,
+            credentialStore: credentialStore,
+            profilerSessionService: profilerService);
+
+        await viewModel.LoadInitialProfileAsync();
+        await viewModel.ConnectAsync("masterkey");
+        viewModel.ClearSessionCredentialForShutdown();
+        await viewModel.StartProfilerAsync(string.Empty);
+
+        profilerService.StartCount.Should().Be(1);
+        profilerService.LastPasswordLength.Should().Be("masterkey".Length);
+    }
+
+    [Fact]
+    public async Task LoadInitialProfileAsync_ShouldPopulateSavedProfileWithoutRevealingPassword()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Produção",
+            "db-server",
+            3051,
+            "prod.fdb",
+            "SYSDBA",
+            "WIN1252",
+            "ADMIN",
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var viewModel = CreateViewModel(connectionProfileService: new FakeConnectionProfileService(profile));
+
+        await viewModel.LoadInitialProfileAsync();
+
+        viewModel.ProfileName.Should().Be("Produção");
+        viewModel.Host.Should().Be("db-server");
+        viewModel.Port.Should().Be(3051);
+        viewModel.Database.Should().Be("prod.fdb");
+        viewModel.UserName.Should().Be("SYSDBA");
+        viewModel.Charset.Should().Be("WIN1252");
+        viewModel.Role.Should().Be("ADMIN");
+        viewModel.RememberPassword.Should().BeTrue();
+        viewModel.HasSavedPasswordForProfile.Should().BeTrue();
+        viewModel.PasswordStatusText.Should().Be(AppStrings.PasswordSavedForProfile);
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldRequirePassword_WhenPasswordBoxIsEmptyEvenWithSavedPassword()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Local",
+            "localhost",
+            3050,
+            "employee.fdb",
+            "SYSDBA",
+            "UTF8",
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var profileService = new FakeConnectionProfileService(profile);
+        var connectionService = new FakeFirebirdConnectionService(false);
+        var credentialStore = new FakeCredentialStore("saved-secret");
+        var viewModel = CreateViewModel(
+            connectionProfileService: profileService,
+            credentialStore: credentialStore,
+            firebirdConnectionService: connectionService);
+
+        await viewModel.LoadInitialProfileAsync();
+        await viewModel.ConnectAsync(string.Empty);
+
+        connectionService.ConnectionCount.Should().Be(0);
+        profileService.LastRequest.Should().BeNull();
+        credentialStore.SaveCount.Should().Be(0);
+        credentialStore.DeleteCount.Should().Be(0);
+        viewModel.HasSavedPasswordForProfile.Should().BeTrue();
+        viewModel.OperationMessage.Should().Be(AppStrings.PasswordRequired);
+    }
+
+    [Fact]
+    public async Task LoadPasswordForCurrentProfileAsync_ShouldReturnSavedPasswordForPasswordBoxFill()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Local",
+            "localhost",
+            3050,
+            "employee.fdb",
+            "SYSDBA",
+            "UTF8",
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var viewModel = CreateViewModel(
+            connectionProfileService: new FakeConnectionProfileService(profile),
+            credentialStore: new FakeCredentialStore("saved-secret"));
+
+        await viewModel.LoadInitialProfileAsync();
+
+        using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
+
+        secret.Should().NotBeNull();
+        secret!.RevealAsString().Should().Be("saved-secret");
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldSaveTypedPasswordAfterSuccessfulConnection_WhenRememberPasswordIsChecked()
+    {
+        var credentialStore = new FakeCredentialStore();
+        var viewModel = CreateViewModel(credentialStore: credentialStore);
+        viewModel.RememberPassword = true;
+
+        await viewModel.ConnectAsync("masterkey");
+
+        credentialStore.SaveCount.Should().Be(1);
+        credentialStore.SavedPasswordLength.Should().Be("masterkey".Length);
+        viewModel.HasSavedPasswordForProfile.Should().BeTrue();
+        viewModel.RememberPassword.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldNotSaveOrDeletePassword_WhenRememberPasswordIsUnchecked()
+    {
+        var credentialStore = new FakeCredentialStore();
+        var viewModel = CreateViewModel(credentialStore: credentialStore);
+        viewModel.RememberPassword = false;
+
+        await viewModel.ConnectAsync("masterkey");
+
+        credentialStore.SaveCount.Should().Be(0);
+        credentialStore.DeleteCount.Should().Be(0);
+        viewModel.HasSavedPasswordForProfile.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ConnectAsync_ShouldNotTryConnection_WhenNoPasswordIsAvailable()
+    {
+        var connectionService = new FakeFirebirdConnectionService(false);
+        var viewModel = CreateViewModel(firebirdConnectionService: connectionService);
+
+        await viewModel.ConnectAsync(string.Empty);
+
+        connectionService.ConnectionCount.Should().Be(0);
+        viewModel.ConnectionState.Should().Be(ShellConnectionState.ConnectionFailed);
+        viewModel.OperationMessage.Should().Be(AppStrings.PasswordRequired);
+    }
+
+    [Fact]
+    public async Task SaveProfileAsync_ShouldDeleteSavedPasswordOnlyWhenExplicitlySavingUnchecked()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Local",
+            "localhost",
+            3050,
+            "employee.fdb",
+            "SYSDBA",
+            "UTF8",
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var profileService = new FakeConnectionProfileService(profile);
+        var credentialStore = new FakeCredentialStore("saved-secret", profileService.MarkPasswordDeleted);
+        var viewModel = CreateViewModel(
+            connectionProfileService: profileService,
+            credentialStore: credentialStore);
+
+        await viewModel.LoadInitialProfileAsync();
+        viewModel.RememberPassword = false;
+        await viewModel.SaveProfileAsync(string.Empty);
+
+        credentialStore.DeleteCount.Should().BeGreaterThanOrEqualTo(1);
+        viewModel.HasSavedPasswordForProfile.Should().BeFalse();
+        viewModel.RememberPassword.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task RememberPasswordUnchecked_ShouldForgetSavedPasswordAndStayUncheckedAfterConnect()
+    {
+        var profile = new ConnectionProfile(
+            Guid.NewGuid(),
+            "Local",
+            "localhost",
+            3050,
+            "employee.fdb",
+            "SYSDBA",
+            "UTF8",
+            null,
+            true,
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow);
+        var profileService = new FakeConnectionProfileService(profile);
+        var credentialStore = new FakeCredentialStore("saved-secret", profileService.MarkPasswordDeleted);
+        var viewModel = CreateViewModel(
+            connectionProfileService: profileService,
+            credentialStore: credentialStore);
+
+        await viewModel.LoadInitialProfileAsync();
+
+        viewModel.RememberPassword = false;
+        await WaitUntilAsync(() => credentialStore.DeleteCount == 1);
+        await viewModel.ConnectAsync("masterkey");
+
+        credentialStore.DeleteCount.Should().Be(1);
+        credentialStore.SaveCount.Should().Be(0);
+        viewModel.RememberPassword.Should().BeFalse();
+        viewModel.HasSavedPasswordForProfile.Should().BeFalse();
+        viewModel.PasswordStatusText.Should().Be(AppStrings.PasswordNotSavedForProfile);
+    }
+
+    [Fact]
+    public async Task LoadPasswordForCurrentProfileAsync_ShouldReturnActiveSessionPassword_WhenReturningToSettingsWithoutSavedPassword()
+    {
+        var connectionService = new FakeFirebirdConnectionService(false);
+        var viewModel = CreateViewModel(firebirdConnectionService: connectionService);
+
+        await viewModel.ConnectAsync("masterkey");
+        using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
+
+        connectionService.ConnectionCount.Should().Be(1);
+        secret.Should().NotBeNull();
+        secret!.RevealAsString().Should().Be("masterkey");
     }
 
     [Fact]
@@ -131,6 +411,19 @@ public sealed class ShellViewModelTests
     }
 
     [Fact]
+    public void ToggleTheme_ShouldSwitchThemeAndUpdateLabel()
+    {
+        var themeService = new FakeThemeService();
+        var viewModel = CreateViewModel(themeService: themeService);
+
+        viewModel.ToggleTheme();
+
+        viewModel.CurrentTheme.Should().Be(AppTheme.Light);
+        themeService.CurrentTheme.Should().Be(AppTheme.Light);
+        viewModel.ThemeToggleLabel.Should().Contain(AppStrings.ThemeLight);
+    }
+
+    [Fact]
     public async Task ConnectAsync_ShouldSetFailedStateWhenConnectionFails()
     {
         var viewModel = CreateViewModel(connectionShouldFail: true);
@@ -145,23 +438,29 @@ public sealed class ShellViewModelTests
     private static ShellViewModel CreateViewModel(
         bool connectionShouldFail = false,
         FakeMetadataCatalogService? metadataService = null,
-        FakeSecurityCatalogService? securityService = null)
+        FakeSecurityCatalogService? securityService = null,
+        IConnectionProfileService? connectionProfileService = null,
+        ICredentialStore? credentialStore = null,
+        IFirebirdConnectionService? firebirdConnectionService = null,
+        IProfilerSessionService? profilerSessionService = null,
+        IThemeService? themeService = null)
     {
         return new ShellViewModel(
-            new FakeConnectionProfileService(),
-            new FakeCredentialStore(),
-            new FakeFirebirdConnectionService(connectionShouldFail),
+            connectionProfileService ?? new FakeConnectionProfileService(),
+            credentialStore ?? new FakeCredentialStore(),
+            firebirdConnectionService ?? new FakeFirebirdConnectionService(connectionShouldFail),
             new FakeMonitoringSessionService(),
             new FakeHistoryWriter(),
             new DiagnosticEngine([new FakeDiagnosticRule()]),
             new TransactionsWorkspaceViewModel(),
             new DashboardViewModel(new DashboardProjectionService()),
-            new ProfilerWorkspaceViewModel(new FakeProfilerSessionService(), new FakeHistoryWriter()),
+            new ProfilerWorkspaceViewModel(profilerSessionService ?? new FakeProfilerSessionService(), new FakeHistoryWriter()),
             new HistoryWorkspaceViewModel(new FakeHistoryQueryService(), new FakeHistoryExportService()),
             new AlertsCenterViewModel(new FakeAlertStore()),
             new MetadataExplorerViewModel(metadataService ?? new FakeMetadataCatalogService()),
             new MaintenanceWorkspaceViewModel(new FakeMaintenanceService(), new FakeMaintenanceHistoryStore()),
-            new SecurityWorkspaceViewModel(securityService ?? new FakeSecurityCatalogService()));
+            new SecurityWorkspaceViewModel(securityService ?? new FakeSecurityCatalogService()),
+            themeService ?? new FakeThemeService());
     }
 
     private static async Task WaitUntilAsync(Func<bool> condition)
@@ -175,13 +474,32 @@ public sealed class ShellViewModelTests
 
     private sealed class FakeConnectionProfileService : IConnectionProfileService
     {
-        public Task<IReadOnlyList<ConnectionProfile>> ListAsync(CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<ConnectionProfile>>([]);
-        public Task<ConnectionProfile?> GetAsync(Guid id, CancellationToken cancellationToken) => Task.FromResult<ConnectionProfile?>(null);
+        private readonly List<ConnectionProfile> profiles;
+
+        public FakeConnectionProfileService(params ConnectionProfile[] profiles)
+        {
+            this.profiles = profiles.ToList();
+        }
+
+        public ConnectionProfileRequest? LastRequest { get; private set; }
+
+        public Task<IReadOnlyList<ConnectionProfile>> ListAsync(CancellationToken cancellationToken)
+        {
+            return Task.FromResult<IReadOnlyList<ConnectionProfile>>(profiles.ToArray());
+        }
+
+        public Task<ConnectionProfile?> GetAsync(Guid id, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(profiles.SingleOrDefault(profile => profile.Id == id));
+        }
 
         public Task<ConnectionProfile> SaveAsync(ConnectionProfileRequest request, CancellationToken cancellationToken)
         {
-            return Task.FromResult(new ConnectionProfile(
-                request.Id ?? Guid.NewGuid(),
+            LastRequest = request;
+            var existing = profiles.SingleOrDefault(profile => profile.Name.Equals(request.Name, StringComparison.OrdinalIgnoreCase));
+            var hasSavedPassword = request.Password is not null || existing?.HasSavedPassword == true;
+            var profile = new ConnectionProfile(
+                existing?.Id ?? request.Id ?? Guid.NewGuid(),
                 request.Name,
                 request.Host,
                 request.Port,
@@ -189,23 +507,87 @@ public sealed class ShellViewModelTests
                 request.UserName,
                 request.Charset,
                 request.Role,
-                request.RememberPassword,
-                DateTimeOffset.UtcNow,
-                DateTimeOffset.UtcNow));
+                hasSavedPassword,
+                existing?.CreatedAt ?? DateTimeOffset.UtcNow,
+                DateTimeOffset.UtcNow);
+
+            if (existing is not null)
+            {
+                profiles.Remove(existing);
+            }
+
+            profiles.Add(profile);
+            return Task.FromResult(profile);
         }
 
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public void MarkPasswordDeleted(Guid id)
+        {
+            var existing = profiles.SingleOrDefault(profile => profile.Id == id);
+            if (existing is null)
+            {
+                return;
+            }
+
+            profiles.Remove(existing);
+            profiles.Add(existing with { HasSavedPassword = false, UpdatedAt = DateTimeOffset.UtcNow });
+        }
     }
 
-    private sealed class FakeCredentialStore : ICredentialStore
+    private sealed class FakeThemeService : IThemeService
     {
-        public Task SaveAsync(Guid profileId, CredentialSecret secret, CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task<CredentialSecret?> TryLoadAsync(Guid profileId, CancellationToken cancellationToken) => Task.FromResult<CredentialSecret?>(null);
-        public Task DeleteAsync(Guid profileId, CancellationToken cancellationToken) => Task.CompletedTask;
+        public AppTheme CurrentTheme { get; private set; } = AppTheme.Dark;
+
+        public void Apply(AppTheme theme)
+        {
+            CurrentTheme = theme;
+        }
+
+        public AppTheme Toggle()
+        {
+            CurrentTheme = CurrentTheme == AppTheme.Light ? AppTheme.Dark : AppTheme.Light;
+            return CurrentTheme;
+        }
+    }
+
+    private sealed class FakeCredentialStore(string? savedPassword = null, Action<Guid>? onDelete = null) : ICredentialStore
+    {
+        public int SaveCount { get; private set; }
+        public int DeleteCount { get; private set; }
+        public int SavedPasswordLength { get; private set; }
+
+        public Task SaveAsync(Guid profileId, CredentialSecret secret, CancellationToken cancellationToken)
+        {
+            SaveCount++;
+            var bytes = secret.CopyBytes();
+            SavedPasswordLength = bytes.Length;
+            savedPassword = System.Text.Encoding.UTF8.GetString(bytes);
+            Array.Clear(bytes);
+            return Task.CompletedTask;
+        }
+
+        public Task<CredentialSecret?> TryLoadAsync(Guid profileId, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(string.IsNullOrEmpty(savedPassword)
+                ? null
+                : CredentialSecret.FromPlainText(savedPassword));
+        }
+
+        public Task DeleteAsync(Guid profileId, CancellationToken cancellationToken)
+        {
+            DeleteCount++;
+            savedPassword = null;
+            onDelete?.Invoke(profileId);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeFirebirdConnectionService(bool shouldFail) : IFirebirdConnectionService
     {
+        public int ConnectionCount { get; private set; }
+        public int LastPasswordLength { get; private set; }
+
         public Task<ConnectionContext> ConnectAsync(ConnectionRequest request, CancellationToken cancellationToken)
         {
             if (shouldFail)
@@ -213,7 +595,9 @@ public sealed class ShellViewModelTests
                 throw new InvalidOperationException("Falha simulada");
             }
 
-            request.Password?.CopyBytes().Should().NotBeEmpty();
+            ConnectionCount++;
+            LastPasswordLength = request.Password?.CopyBytes().Length ?? 0;
+            LastPasswordLength.Should().BeGreaterThan(0);
             request.Password?.Dispose();
 
             return Task.FromResult(new ConnectionContext(
@@ -268,10 +652,14 @@ public sealed class ShellViewModelTests
 
     private sealed class FakeProfilerSessionService : IProfilerSessionService
     {
+        public int StartCount { get; private set; }
+        public int LastPasswordLength { get; private set; }
         public ProfilerState State { get; private set; } = ProfilerState.Disconnected;
 
         public Task<ProfilerSession> StartAsync(ProfilerOptions options, CredentialSecret? password, CancellationToken cancellationToken)
         {
+            StartCount++;
+            LastPasswordLength = password?.CopyBytes().Length ?? 0;
             State = ProfilerState.Running;
             return Task.FromResult(new ProfilerSession(Guid.NewGuid(), options.SessionName, DateTimeOffset.UtcNow, State));
         }

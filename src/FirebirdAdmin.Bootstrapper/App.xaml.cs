@@ -17,38 +17,47 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        var splash = new SplashWindow();
+        splash.Show();
 
-        host = Host.CreateDefaultBuilder(e.Args)
-            .UseSerilog((context, configuration) =>
-            {
-                var logDirectory = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "FirebirdAdmin",
-                    "Logs");
+        try
+        {
+            host = Host.CreateDefaultBuilder(e.Args)
+                .UseSerilog((context, configuration) =>
+                {
+                    var logDirectory = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "FirebirdAdmin",
+                        "Logs");
 
-                _ = context;
+                    _ = context;
 
-                configuration
-                    .Enrich.FromLogContext()
-                    .WriteTo.File(
-                        Path.Combine(logDirectory, "firebird-admin-.log"),
-                        rollingInterval: RollingInterval.Day,
-                        retainedFileCountLimit: 14);
-            })
-            .ConfigureServices(services =>
-            {
-                services
-                    .AddApplication()
-                    .AddInfrastructure()
-                    .AddPresentation();
-            })
-            .Build();
+                    configuration
+                        .Enrich.FromLogContext()
+                        .WriteTo.File(
+                            Path.Combine(logDirectory, "firebird-admin-.log"),
+                            rollingInterval: RollingInterval.Day,
+                            retainedFileCountLimit: 14);
+                })
+                .ConfigureServices(services =>
+                {
+                    services
+                        .AddApplication()
+                        .AddInfrastructure()
+                        .AddPresentation();
+                })
+                .Build();
 
-        await host.StartAsync();
+            await host.StartAsync();
 
-        var mainWindow = host.Services.GetRequiredService<MainWindow>();
-        MainWindow = mainWindow;
-        mainWindow.Show();
+            var mainWindow = host.Services.GetRequiredService<MainWindow>();
+            MainWindow = mainWindow;
+            mainWindow.Show();
+        }
+        finally
+        {
+            splash.Close();
+        }
     }
 
     protected override async void OnExit(ExitEventArgs e)

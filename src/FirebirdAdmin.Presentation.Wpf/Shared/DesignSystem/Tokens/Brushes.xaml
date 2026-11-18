@@ -6,10 +6,22 @@
     <SolidColorBrush x:Key="Brush.Surface.Raised" Color="{DynamicResource Color.Neutral.0}"/>
     <SolidColorBrush x:Key="Brush.Surface.StatusBar" Color="{DynamicResource Color.Neutral.0}"/>
     <SolidColorBrush x:Key="Brush.Surface.Workspace" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Panel" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Toolbar" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Input" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Hover" Color="{DynamicResource Color.Neutral.50}"/>
+    <SolidColorBrush x:Key="Brush.Surface.Selected" Color="{DynamicResource Color.Neutral.100}"/>
     <SolidColorBrush x:Key="Brush.Border.Subtle" Color="{DynamicResource Color.Neutral.100}"/>
+    <SolidColorBrush x:Key="Brush.Border.Strong" Color="{DynamicResource Color.Neutral.500}"/>
     <SolidColorBrush x:Key="Brush.Text.Muted" Color="{DynamicResource Color.Neutral.500}"/>
+    <SolidColorBrush x:Key="Brush.Text.Subtle" Color="{DynamicResource Color.Neutral.700}"/>
+    <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="{DynamicResource Color.Neutral.0}"/>
+    <SolidColorBrush x:Key="Brush.Grid.Header" Color="{DynamicResource Color.Neutral.50}"/>
+    <SolidColorBrush x:Key="Brush.Grid.RowHover" Color="{DynamicResource Color.Neutral.50}"/>
+    <SolidColorBrush x:Key="Brush.Grid.RowSelected" Color="{DynamicResource Color.Neutral.100}"/>
     <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource Color.Accent.600}"/>
     <SolidColorBrush x:Key="Brush.Accent.Strong" Color="{DynamicResource Color.Accent.700}"/>
+    <SolidColorBrush x:Key="Brush.Accent.Subtle" Color="{DynamicResource Color.Neutral.100}"/>
     <SolidColorBrush x:Key="Brush.Focus" Color="{DynamicResource Color.Focus.500}"/>
     <SolidColorBrush x:Key="Brush.Status.Success" Color="{DynamicResource Color.Success.600}"/>
     <SolidColorBrush x:Key="Brush.Status.Warning" Color="{DynamicResource Color.Warning.600}"/>

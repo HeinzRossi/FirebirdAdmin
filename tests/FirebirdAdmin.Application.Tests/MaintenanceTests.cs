@@ -30,7 +30,7 @@ public sealed class MaintenanceTests
             var result = await service.ValidateAsync(request, CancellationToken.None);
 
             result.CanExecute.Should().BeFalse();
-            result.Errors.Should().Contain(error => error.Contains("overwrite", StringComparison.OrdinalIgnoreCase));
+            result.Errors.Should().Contain(error => error.Contains("não sobrescreve", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
@@ -69,6 +69,18 @@ public sealed class MaintenanceTests
         var result = await task;
 
         result.Operation.Status.Should().Be(MaintenanceOperationStatus.Cancelled);
+    }
+
+    [Fact]
+    public async Task MaintenanceService_ShouldTranslateFailedExitCode()
+    {
+        var service = new MaintenanceService(new AlwaysValidPreflight(), new FailingRunner(), new InMemoryMaintenanceHistoryStore());
+        var request = new SweepRequest(CreateConnection(CreateToolset()), "db.fdb", Confirmed: true);
+
+        var result = await service.ExecuteAsync(request, null, CancellationToken.None);
+
+        result.Operation.Status.Should().Be(MaintenanceOperationStatus.Failed);
+        result.Operation.Message.Should().Be("Operação falhou com código de saída 1.");
     }
 
     private static ConnectionContext CreateConnection(EffectiveToolset toolset)
@@ -112,6 +124,14 @@ public sealed class MaintenanceTests
             Started.TrySetResult();
             await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
             return new ToolExecutionResult(0, []);
+        }
+    }
+
+    private sealed class FailingRunner : IFirebirdToolRunner
+    {
+        public Task<ToolExecutionResult> ExecuteAsync(Guid operationId, FirebirdToolCommand command, IProgress<MaintenanceLogLine> progress, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new ToolExecutionResult(1, []));
         }
     }
 

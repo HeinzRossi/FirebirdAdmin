@@ -1,0 +1,37 @@
+<Window x:Class="FirebirdAdmin.Bootstrapper.SplashWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="420"
+        Height="220"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="#FF0E1518"
+        AllowsTransparency="True">
+    <Border Background="#FF152025"
+            BorderBrush="#FF2DD4BF"
+            BorderThickness="1"
+            Padding="28">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            <Image Grid.Row="0"
+                   Source="pack://application:,,,/FirebirdAdmin.Presentation.Wpf;component/Assets/Branding/FirebirdAdmin_Logo.png"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   AutomationProperties.Name="Logo Firebird Admin"/>
+            <TextBlock Grid.Row="1"
+                       Text="Inicializando..."
+                       Foreground="#FFE7EDF0"
+                       FontFamily="Segoe UI"
+                       FontSize="13"
+                       HorizontalAlignment="Center"
+                       Margin="0,18,0,0"/>
+        </Grid>
+    </Border>
+</Window>

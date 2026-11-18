@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Connections;
 using FirebirdAdmin.Application.History;
 using FirebirdAdmin.Application.Profiler;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.Profiler;
 
@@ -45,6 +46,10 @@ public sealed partial class ProfilerWorkspaceViewModel(
         : $"User: {SelectedEvent.UserName ?? "-"} | Attachment: {SelectedEvent.AttachmentId?.ToString() ?? "-"} | Transaction: {SelectedEvent.TransactionId?.ToString() ?? "-"}";
     public string SelectedPlan => SelectedEvent?.Plan ?? "-";
     public string SelectedRawTrace => SelectedEvent?.RawTrace ?? "-";
+    public bool CanStart => State is ProfilerState.Ready or ProfilerState.Failed;
+    public bool CanStop => State is ProfilerState.Starting or ProfilerState.Running or ProfilerState.PausedView;
+    public bool CanPauseOrResume => State is ProfilerState.Running or ProfilerState.PausedView;
+    public string PauseResumeLabel => State is ProfilerState.PausedView ? AppStrings.ResumeView : AppStrings.PauseView;
 
     public async Task StartAsync(ConnectionContext connection, CredentialSecret? password, CancellationToken cancellationToken)
     {
@@ -54,9 +59,15 @@ public sealed partial class ProfilerWorkspaceViewModel(
             return;
         }
 
+        if (password is null)
+        {
+            SetFailed(AppStrings.PasswordUnavailable);
+            return;
+        }
+
         State = ProfilerState.Starting;
         Message = "Iniciando sessão Trace...";
-        OnPropertyChanged(nameof(StateText));
+        OnStateChanged();
 
         var options = new ProfilerOptions(connection, $"FirebirdAdmin-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}");
         activeConnectionProfileId = connection.ProfileId;
@@ -65,7 +76,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
         State = ProfilerState.Running;
         Message = "Captura Trace em execução.";
         IsFollowing = true;
-        OnPropertyChanged(nameof(StateText));
+        OnStateChanged();
 
         await (readCts?.CancelAsync() ?? Task.CompletedTask);
         readCts = new CancellationTokenSource();
@@ -76,14 +87,14 @@ public sealed partial class ProfilerWorkspaceViewModel(
     {
         State = ProfilerState.Stopping;
         Message = "Encerrando captura Trace...";
-        OnPropertyChanged(nameof(StateText));
+        OnStateChanged();
 
         await (readCts?.CancelAsync() ?? Task.CompletedTask);
         await profilerSessionService.StopAsync(cancellationToken);
 
         State = ProfilerState.Ready;
         Message = "Captura Trace encerrada.";
-        OnPropertyChanged(nameof(StateText));
+        OnStateChanged();
     }
 
     public void PauseView()
@@ -96,10 +107,24 @@ public sealed partial class ProfilerWorkspaceViewModel(
         State = ProfilerState.PausedView;
         IsFollowing = false;
         Message = "Visualização pausada. Captura continua em buffer.";
-        OnPropertyChanged(nameof(StateText));
+        OnStateChanged();
     }
 
-    public void ResumeFollow()
+    public void TogglePauseResume()
+    {
+        if (State is ProfilerState.Running)
+        {
+            PauseView();
+            return;
+        }
+
+        if (State is ProfilerState.PausedView)
+        {
+            ResumeView();
+        }
+    }
+
+    public void ResumeView()
     {
         IsFollowing = true;
         if (State is ProfilerState.PausedView)
@@ -109,8 +134,8 @@ public sealed partial class ProfilerWorkspaceViewModel(
 
         ApplyFilter();
         SelectLast();
-        Message = "Follow ativo.";
-        OnPropertyChanged(nameof(StateText));
+        Message = "Visualização em tempo real.";
+        OnStateChanged();
     }
 
     public void Clear()
@@ -127,7 +152,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
         {
             State = ProfilerState.Ready;
             Message = "SQL Profiler pronto.";
-            OnPropertyChanged(nameof(StateText));
+            OnStateChanged();
         }
     }
 
@@ -135,7 +160,7 @@ public sealed partial class ProfilerWorkspaceViewModel(
     {
         State = ProfilerState.Failed;
         Message = message;
-        OnPropertyChanged(nameof(StateText));
+        OnStateChanged();
     }
 
     partial void OnFilterTextChanged(string value)
@@ -235,6 +260,15 @@ public sealed partial class ProfilerWorkspaceViewModel(
     {
         OnPropertyChanged(nameof(EventCount));
         OnPropertyChanged(nameof(BufferedCount));
+    }
+
+    private void OnStateChanged()
+    {
+        OnPropertyChanged(nameof(StateText));
+        OnPropertyChanged(nameof(CanStart));
+        OnPropertyChanged(nameof(CanStop));
+        OnPropertyChanged(nameof(CanPauseOrResume));
+        OnPropertyChanged(nameof(PauseResumeLabel));
     }
 
     private async Task PersistProfilerEventAsync(ProfilerEvent profilerEvent)

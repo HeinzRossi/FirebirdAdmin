@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FirebirdAdmin.Application.Diagnostics;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 
 namespace FirebirdAdmin.Presentation.Wpf.Diagnostics;
 
@@ -17,6 +18,24 @@ public sealed partial class AlertsCenterViewModel(IAlertStore alertStore) : Obse
 
     [ObservableProperty]
     private AlertRowViewModel? selectedAlert;
+
+    public IReadOnlyList<FilterOption> StatusFilterOptions { get; } =
+    [
+        new(AppStrings.FilterAllStatus, string.Empty),
+        new(AppStrings.FilterStatusActive, AlertStatus.Active.ToString()),
+        new(AppStrings.FilterStatusAcknowledged, AlertStatus.Acknowledged.ToString()),
+        new(AppStrings.FilterStatusResolved, AlertStatus.Resolved.ToString())
+    ];
+
+    public IReadOnlyList<FilterOption> SeverityFilterOptions { get; } =
+    [
+        new(AppStrings.FilterAllSeverities, string.Empty),
+        new(AppStrings.FilterSeverityCritical, DiagnosticSeverity.Critical.ToString()),
+        new(AppStrings.FilterSeverityHigh, DiagnosticSeverity.High.ToString()),
+        new(AppStrings.FilterSeverityMedium, DiagnosticSeverity.Medium.ToString()),
+        new(AppStrings.FilterSeverityLow, DiagnosticSeverity.Low.ToString()),
+        new(AppStrings.FilterSeverityInfo, DiagnosticSeverity.Info.ToString())
+    ];
 
     public ObservableCollection<AlertRowViewModel> Alerts { get; } = [];
     public int ActiveCount => Alerts.Count(alert => alert.Alert.Status is AlertStatus.Active);
@@ -75,6 +94,16 @@ public sealed partial class AlertsCenterViewModel(IAlertStore alertStore) : Obse
         OnPropertyChanged(nameof(SelectedContext));
         OnPropertyChanged(nameof(SelectedTimeline));
         OnPropertyChanged(nameof(SelectedRule));
+    }
+
+    partial void OnStatusFilterChanged(string value)
+    {
+        _ = LoadAsync();
+    }
+
+    partial void OnSeverityFilterChanged(string value)
+    {
+        _ = LoadAsync();
     }
 
     private async Task SetSelectedStatusAsync(AlertStatus status, string? note, CancellationToken cancellationToken)

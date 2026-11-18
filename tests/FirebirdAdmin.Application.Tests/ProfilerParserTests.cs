@@ -49,4 +49,107 @@ public sealed class ProfilerParserTests
         events[0].Type.Should().Be(TraceEventType.Unparsed);
         events[0].RawTrace.Should().Contain("linha truncada");
     }
+
+    [Fact]
+    public void ParseBlock_ShouldNormalizeFirebird25ExecuteStatementFinish()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_FINISH
+                             C:\DELPHI\COMPACTADOR\2019-05-29\NTCS.GDB (ATT_50014, SYSDBA:NONE, NONE, XNET:HEINZ)
+                             	(TRA_90013, CONCURRENCY | WAIT | READ_WRITE)
+                             
+                             Statement 33:
+                             -------------------------------------------------------------------------------
+                             select current_timestamp from rdb$database
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             PLAN (RDB$DATABASE NATURAL)
+                             0 ms, 1 read(s), 0 write(s), 1 fetch(es)
+                             """;
+
+        var events = parser.ParseBlock(block, 20, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].Type.Should().Be(TraceEventType.StatementFinished);
+        events[0].Sql.Should().Be("select current_timestamp from rdb$database");
+    }
+
+    [Fact]
+    public void ParseBlock_ShouldExtractCompleteFirebird25MultilineSql()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_START
+                             C:\DELPHI\COMPACTADOR\2019-05-29\RC.GDB (ATT_50014, SYSDBA:NONE, UTF8, TCPv4:127.0.0.1/62518)
+                             	(TRA_90013, READ_COMMITTED | REC_VERSION | NOWAIT | READ_WRITE)
+                             
+                             Statement 34:
+                             -------------------------------------------------------------------------------
+                             select
+                                 rdb$relation_id,
+                                 rdb$relation_name
+                             from rdb$relations
+                             where rdb$system_flag = 0
+                             order by rdb$relation_name
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             PLAN (RDB$RELATIONS NATURAL)
+                             """;
+
+        var events = parser.ParseBlock(block, 30, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].Type.Should().Be(TraceEventType.StatementStarted);
+        events[0].Sql.Should().Be(string.Join(
+            Environment.NewLine,
+            "select",
+            "rdb$relation_id,",
+            "rdb$relation_name",
+            "from rdb$relations",
+            "where rdb$system_flag = 0",
+            "order by rdb$relation_name"));
+    }
+
+    [Fact]
+    public void ParseBlock_ShouldExtractClientProcessPathForFirebirdAdmin()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_FINISH
+                             C:\DELPHI\COMPACTADOR\2019-05-29\RC.GDB (ATT_50014, SYSDBA:NONE, UTF8, TCPv4:127.0.0.1/62518)
+                             C:\Projetos\FirebirdAdmin\src\FirebirdAdmin.Bootstrapper\bin\Debug\net10.0-windows\win-x64\FirebirdAdmin.Bootstrapper.exe:30020
+                             	(TRA_90013, READ_COMMITTED | REC_VERSION | NOWAIT | READ_WRITE)
+
+                             Statement 34:
+                             -------------------------------------------------------------------------------
+                             select 1 from rdb$database
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             """;
+
+        var events = parser.ParseBlock(block, 40, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].ClientProcessPath.Should().Be(@"C:\Projetos\FirebirdAdmin\src\FirebirdAdmin.Bootstrapper\bin\Debug\net10.0-windows\win-x64\FirebirdAdmin.Bootstrapper.exe");
+    }
+
+    [Fact]
+    public void ParseBlock_ShouldExtractClientProcessPathForExternalTool()
+    {
+        var parser = new FirebirdTraceEventParser();
+        const string block = """
+                             EXECUTE_STATEMENT_FINISH
+                             C:\DELPHI\COMPACTADOR\2019-05-29\RC.GDB (ATT_50014, SYSDBA:NONE, UTF8, TCPv4:127.0.0.1/62518)
+                             C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe:59648
+                             	(TRA_90013, READ_COMMITTED | REC_VERSION | NOWAIT | READ_WRITE)
+
+                             Statement 34:
+                             -------------------------------------------------------------------------------
+                             select 1 from rdb$database
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                             """;
+
+        var events = parser.ParseBlock(block, 50, DateTimeOffset.UtcNow);
+
+        events.Should().ContainSingle();
+        events[0].ClientProcessPath.Should().Be(@"C:\Program Files\Firebird\Firebird_2_5\bin\isql.exe");
+    }
 }

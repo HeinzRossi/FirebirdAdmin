@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Reflection;
 using System.Text;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -15,6 +16,7 @@ using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Resources;
 using FirebirdAdmin.Presentation.Wpf.Security;
+using FirebirdAdmin.Presentation.Wpf.Theme;
 
 namespace FirebirdAdmin.Presentation.Wpf.Shell;
 
@@ -26,7 +28,11 @@ public sealed partial class ShellViewModel : ObservableObject
     private readonly IMonitoringSessionService monitoringSessionService;
     private readonly IHistoryWriter historyWriter;
     private readonly IDiagnosticEngine diagnosticEngine;
+    private readonly IThemeService themeService;
+    private IReadOnlyList<ConnectionProfile> connectionProfiles = [];
     private CancellationTokenSource? monitoringReadCts;
+    private byte[]? activeSessionCredentialBytes;
+    private bool isApplyingProfile;
 
     [ObservableProperty]
     private string profileName = "Local";
@@ -53,6 +59,9 @@ public sealed partial class ShellViewModel : ObservableObject
     private bool rememberPassword;
 
     [ObservableProperty]
+    private bool hasSavedPasswordForProfile;
+
+    [ObservableProperty]
     private ShellConnectionState connectionState = ShellConnectionState.Disconnected;
 
     [ObservableProperty]
@@ -66,6 +75,12 @@ public sealed partial class ShellViewModel : ObservableObject
 
     [ObservableProperty]
     private ShellWorkspace selectedWorkspace = ShellWorkspace.Dashboard;
+
+    [ObservableProperty]
+    private AppTheme currentTheme;
+
+    [ObservableProperty]
+    private bool isAboutOpen;
 
     public ShellViewModel(
         IConnectionProfileService connectionProfileService,
@@ -81,7 +96,8 @@ public sealed partial class ShellViewModel : ObservableObject
         AlertsCenterViewModel alertsCenter,
         MetadataExplorerViewModel metadataExplorer,
         MaintenanceWorkspaceViewModel maintenanceWorkspace,
-        SecurityWorkspaceViewModel securityWorkspace)
+        SecurityWorkspaceViewModel securityWorkspace,
+        IThemeService themeService)
     {
         this.connectionProfileService = connectionProfileService;
         this.credentialStore = credentialStore;
@@ -89,6 +105,7 @@ public sealed partial class ShellViewModel : ObservableObject
         this.monitoringSessionService = monitoringSessionService;
         this.historyWriter = historyWriter;
         this.diagnosticEngine = diagnosticEngine;
+        this.themeService = themeService;
         TransactionsWorkspace = transactionsWorkspace;
         Dashboard = dashboard;
         ProfilerWorkspace = profilerWorkspace;
@@ -97,19 +114,20 @@ public sealed partial class ShellViewModel : ObservableObject
         MetadataExplorer = metadataExplorer;
         MaintenanceWorkspace = maintenanceWorkspace;
         SecurityWorkspace = securityWorkspace;
+        CurrentTheme = themeService.CurrentTheme;
         ProfilerWorkspace.ProfilerEventReceived += ProfilerWorkspace_OnProfilerEventReceived;
 
         NavigationItems =
         [
-            new(ShellWorkspace.Dashboard, AppStrings.Dashboard, "1", $"_1 {AppStrings.Dashboard}"),
-            new(ShellWorkspace.Monitoring, AppStrings.Monitoring, "2", $"_2 {AppStrings.Monitoring}"),
-            new(ShellWorkspace.SqlProfiler, AppStrings.SqlProfiler, "3", $"_3 {AppStrings.SqlProfiler}"),
-            new(ShellWorkspace.Diagnostics, AppStrings.Diagnostics, "4", $"_4 {AppStrings.Diagnostics}"),
-            new(ShellWorkspace.Metadata, AppStrings.Metadata, "5", $"_5 {AppStrings.Metadata}"),
-            new(ShellWorkspace.Security, AppStrings.Security, "6", $"_6 {AppStrings.Security}"),
-            new(ShellWorkspace.Maintenance, AppStrings.Maintenance, "7", $"_7 {AppStrings.Maintenance}"),
-            new(ShellWorkspace.History, AppStrings.History, "8", $"_8 {AppStrings.History}"),
-            new(ShellWorkspace.Settings, AppStrings.Settings, "9", $"_9 {AppStrings.Settings}")
+            new(ShellWorkspace.Dashboard, AppStrings.Dashboard, "1", "\uE80F", $"_{AppStrings.Dashboard}"),
+            new(ShellWorkspace.Monitoring, AppStrings.Monitoring, "2", "\uE7F4", $"_{AppStrings.Monitoring}"),
+            new(ShellWorkspace.SqlProfiler, AppStrings.SqlProfiler, "3", "\uE943", $"_{AppStrings.SqlProfiler}"),
+            new(ShellWorkspace.Diagnostics, AppStrings.Diagnostics, "4", "\uE814", $"_{AppStrings.Diagnostics}"),
+            new(ShellWorkspace.Metadata, AppStrings.Metadata, "5", "\uE8B7", $"_{AppStrings.Metadata}"),
+            new(ShellWorkspace.Security, AppStrings.Security, "6", "\uE72E", $"_{AppStrings.Security}"),
+            new(ShellWorkspace.Maintenance, AppStrings.Maintenance, "7", "\uE90F", $"_{AppStrings.Maintenance}"),
+            new(ShellWorkspace.History, AppStrings.History, "8", "\uE81C", $"_{AppStrings.History}"),
+            new(ShellWorkspace.Settings, AppStrings.Settings, "9", "\uE713", $"_{AppStrings.Settings}")
         ];
         SelectedNavigationItem = NavigationItems[0];
     }
@@ -123,7 +141,6 @@ public sealed partial class ShellViewModel : ObservableObject
     public string TransactionsFilterLabel => AppStrings.TransactionsFilterLabel;
     public string StartLabel => AppStrings.Start;
     public string PauseViewLabel => AppStrings.PauseView;
-    public string FollowLabel => AppStrings.Follow;
     public string StopLabel => AppStrings.Stop;
     public string ClearLabel => AppStrings.Clear;
     public string SearchLabel => AppStrings.Search;
@@ -132,13 +149,18 @@ public sealed partial class ShellViewModel : ObservableObject
     public string ResolveLabel => AppStrings.Resolve;
     public string ReopenLabel => AppStrings.Reopen;
     public string LoadLabel => AppStrings.Load;
-    public string ObjectLabel => AppStrings.Object;
-    public string BackLabel => AppStrings.Back;
-    public string ForwardLabel => AppStrings.Forward;
+    public string RefreshObjectLabel => AppStrings.RefreshObject;
     public string MarkStaleLabel => AppStrings.MarkStale;
     public string ConfirmLabel => AppStrings.Confirm;
     public string ValidateLabel => AppStrings.Validate;
     public string ExecuteLabel => AppStrings.Execute;
+    public string ExitLabel => AppStrings.Exit;
+    public string AboutLabel => AppStrings.About;
+    public string AboutTitle => AppStrings.AboutTitle;
+    public string AboutDescription => AppStrings.AboutDescription;
+    public string AboutCloseLabel => AppStrings.AboutClose;
+    public string AboutVersionText => string.Format(AppStrings.AboutVersionFormat, GetInformationalVersion());
+    public string TitleBarVersionText => GetInformationalVersion();
     public string CancelLabel => AppStrings.Cancel;
     public string UpdateHistoryLabel => AppStrings.UpdateHistory;
     public string AlertsInstruction => AppStrings.AlertsInstruction;
@@ -147,13 +169,20 @@ public sealed partial class ShellViewModel : ObservableObject
     public string HostLabel => AppStrings.Host;
     public string PortLabel => AppStrings.Port;
     public string DatabaseLabel => AppStrings.Database;
+    public string SelectDatabaseLabel => AppStrings.SelectDatabase;
     public string UserNameLabel => AppStrings.UserName;
     public string PasswordLabel => AppStrings.Password;
     public string RoleLabel => AppStrings.Role;
     public string RememberPasswordLabel => AppStrings.RememberPassword;
+    public string PasswordStatusText => HasSavedPasswordForProfile
+        ? AppStrings.PasswordSavedForProfile
+        : AppStrings.PasswordNotSavedForProfile;
     public string SaveProfileLabel => AppStrings.SaveProfile;
     public string TestConnectionLabel => AppStrings.TestConnection;
     public string ConnectLabel => AppStrings.Connect;
+    public string ThemeToggleLabel => string.Format(
+        AppStrings.ThemeToggleFormat,
+        CurrentTheme == AppTheme.Light ? AppStrings.ThemeLight : AppStrings.ThemeDark);
     public string TraceStatus => ProfilerWorkspace.State switch
     {
         Application.Profiler.ProfilerState.Running => "Trace em execução",
@@ -233,15 +262,84 @@ public sealed partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(ReadyStatus));
     }
 
+    partial void OnCurrentThemeChanged(AppTheme value)
+    {
+        OnPropertyChanged(nameof(ThemeToggleLabel));
+    }
+
+    partial void OnProfileNameChanged(string value)
+    {
+        UpdatePasswordStatusFromProfileName();
+    }
+
+    partial void OnRememberPasswordChanged(bool value)
+    {
+        if (!value && !isApplyingProfile)
+        {
+            _ = ForgetSavedPasswordForCurrentProfileAsync();
+        }
+    }
+
+    partial void OnHasSavedPasswordForProfileChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PasswordStatusText));
+    }
+
     partial void OnOperationMessageChanged(string value)
     {
         OnPropertyChanged(nameof(WorkspacePlaceholder));
     }
 
+    public async Task LoadInitialProfileAsync(CancellationToken cancellationToken = default)
+    {
+        connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
+        var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName, StringComparison.OrdinalIgnoreCase))
+            ?? connectionProfiles.FirstOrDefault();
+
+        if (profile is null)
+        {
+            HasSavedPasswordForProfile = false;
+            return;
+        }
+
+        ApplyProfile(profile);
+    }
+
+    public async Task<CredentialSecret?> LoadPasswordForCurrentProfileAsync(CancellationToken cancellationToken = default)
+    {
+        var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase))
+            ?? await FindProfileByNameAsync(ProfileName, cancellationToken);
+
+        if (profile?.HasSavedPassword == true)
+        {
+            var savedSecret = await credentialStore.TryLoadAsync(profile.Id, cancellationToken);
+            if (savedSecret is not null)
+            {
+                return savedSecret;
+            }
+        }
+
+        if (activeSessionCredentialBytes is { Length: > 0 } &&
+            ActiveConnection is not null &&
+            (profile?.Id == ActiveConnection.ProfileId ||
+             ActiveConnection.ProfileName.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            return CreateSecretCopy(activeSessionCredentialBytes);
+        }
+
+        return null;
+    }
+
     public async Task SaveProfileAsync(string password, CancellationToken cancellationToken = default)
     {
         using var secret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-        await connectionProfileService.SaveAsync(CreateProfileRequest(secret), cancellationToken);
+        var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret), cancellationToken);
+        if (!RememberPassword)
+        {
+            await credentialStore.DeleteAsync(profile.Id, cancellationToken);
+        }
+
+        await LoadInitialProfileAsync(cancellationToken);
         OperationMessage = "Perfil salvo.";
     }
 
@@ -304,6 +402,33 @@ public sealed partial class ShellViewModel : ObservableObject
         }
     }
 
+    [RelayCommand]
+    public void ToggleTheme()
+    {
+        CurrentTheme = themeService.Toggle();
+    }
+
+    [RelayCommand]
+    public void ShowAbout()
+    {
+        IsAboutOpen = true;
+    }
+
+    [RelayCommand]
+    public void CloseAbout()
+    {
+        IsAboutOpen = false;
+    }
+
+    private static string GetInformationalVersion()
+    {
+        return typeof(ShellViewModel).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion
+            ?? typeof(ShellViewModel).Assembly.GetName().Version?.ToString()
+            ?? "1.0.0";
+    }
+
     private async Task ConnectCoreAsync(string password, bool setActiveConnection, CancellationToken cancellationToken)
     {
         ConnectionState = ShellConnectionState.Connecting;
@@ -312,21 +437,42 @@ public sealed partial class ShellViewModel : ObservableObject
         byte[]? credentialBytes = null;
         try
         {
-            using var profileSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(profileSecret), cancellationToken);
-            using var savedSecret = profileSecret is null ? await credentialStore.TryLoadAsync(profile.Id, cancellationToken) : null;
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                ConnectionState = ShellConnectionState.ConnectionFailed;
+                OperationMessage = AppStrings.PasswordRequired;
+                return;
+            }
 
-            credentialBytes = !string.IsNullOrEmpty(password)
-                ? Encoding.UTF8.GetBytes(password)
-                : savedSecret?.CopyBytes();
+            var profile = await connectionProfileService.SaveAsync(CreateProfileRequest(secret: null), cancellationToken);
+            credentialBytes = Encoding.UTF8.GetBytes(password);
+
+            if (credentialBytes is null || credentialBytes.Length == 0)
+            {
+                ConnectionState = ShellConnectionState.ConnectionFailed;
+                OperationMessage = AppStrings.PasswordRequired;
+                return;
+            }
 
             using var connectionSecret = CreateSecretCopy(credentialBytes);
             var context = await firebirdConnectionService.ConnectAsync(
                 new ConnectionRequest(profile, connectionSecret),
                 cancellationToken);
 
+            var shouldPersistRememberedPassword = RememberPassword;
+            if (setActiveConnection && shouldPersistRememberedPassword)
+            {
+                using var rememberedSecret = CreateSecretCopy(credentialBytes);
+                await credentialStore.SaveAsync(profile.Id, rememberedSecret!, cancellationToken);
+                profile = (await connectionProfileService.GetAsync(profile.Id, cancellationToken) ?? profile) with { HasSavedPassword = true };
+            }
+
             if (setActiveConnection)
             {
+                HasSavedPasswordForProfile = shouldPersistRememberedPassword || (RememberPassword && profile.HasSavedPassword);
+                RememberPassword = shouldPersistRememberedPassword;
+                connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
+                StoreActiveSessionCredential(credentialBytes);
                 ActiveConnection = context;
                 ProfilerWorkspace.SetReady();
                 using var metadataSecret = CreateSecretCopy(credentialBytes);
@@ -368,8 +514,9 @@ public sealed partial class ShellViewModel : ObservableObject
         }
 
         using var providedSecret = string.IsNullOrEmpty(password) ? null : CredentialSecret.FromPlainText(password);
-        using var savedSecret = providedSecret is null ? await credentialStore.TryLoadAsync(ActiveConnection.ProfileId, cancellationToken) : null;
-        await ProfilerWorkspace.StartAsync(ActiveConnection, providedSecret ?? savedSecret, cancellationToken);
+        using var sessionSecret = providedSecret is null ? CreateSecretCopy(activeSessionCredentialBytes) : null;
+        using var savedSecret = providedSecret is null && sessionSecret is null ? await credentialStore.TryLoadAsync(ActiveConnection.ProfileId, cancellationToken) : null;
+        await ProfilerWorkspace.StartAsync(ActiveConnection, providedSecret ?? sessionSecret ?? savedSecret, cancellationToken);
         OnPropertyChanged(nameof(TraceStatus));
         OnPropertyChanged(nameof(IsTraceRunning));
     }
@@ -387,9 +534,9 @@ public sealed partial class ShellViewModel : ObservableObject
         OnPropertyChanged(nameof(TraceStatus));
     }
 
-    public void ResumeProfilerFollow()
+    public void ToggleProfilerPauseResume()
     {
-        ProfilerWorkspace.ResumeFollow();
+        ProfilerWorkspace.TogglePauseResume();
         OnPropertyChanged(nameof(TraceStatus));
     }
 
@@ -431,6 +578,11 @@ public sealed partial class ShellViewModel : ObservableObject
 
     private ConnectionProfileRequest CreateProfileRequest(CredentialSecret? secret)
     {
+        return CreateProfileRequest(secret, rememberPasswordOverride: null);
+    }
+
+    private ConnectionProfileRequest CreateProfileRequest(CredentialSecret? secret, bool? rememberPasswordOverride)
+    {
         return new ConnectionProfileRequest(
             Id: null,
             ProfileName,
@@ -440,13 +592,88 @@ public sealed partial class ShellViewModel : ObservableObject
             UserName,
             Charset,
             Role,
-            RememberPassword,
+            rememberPasswordOverride ?? RememberPassword,
             secret);
+    }
+
+    private async Task<ConnectionProfile?> FindProfileByNameAsync(string profileName, CancellationToken cancellationToken)
+    {
+        connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
+        return connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(profileName.Trim(), StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ApplyProfile(ConnectionProfile profile)
+    {
+        isApplyingProfile = true;
+        try
+        {
+            ProfileName = profile.Name;
+            Host = profile.Host;
+            Port = profile.Port;
+            Database = profile.Database;
+            UserName = profile.UserName;
+            Charset = profile.Charset;
+            Role = profile.Role;
+            RememberPassword = profile.HasSavedPassword;
+            HasSavedPasswordForProfile = profile.HasSavedPassword;
+        }
+        finally
+        {
+            isApplyingProfile = false;
+        }
+    }
+
+    private void UpdatePasswordStatusFromProfileName()
+    {
+        var profile = connectionProfiles.FirstOrDefault(profile => profile.Name.Equals(ProfileName.Trim(), StringComparison.OrdinalIgnoreCase));
+        HasSavedPasswordForProfile = profile?.HasSavedPassword == true;
+    }
+
+    private async Task ForgetSavedPasswordForCurrentProfileAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var profile = await FindProfileByNameAsync(ProfileName, cancellationToken);
+            if (profile?.HasSavedPassword != true)
+            {
+                HasSavedPasswordForProfile = false;
+                return;
+            }
+
+            await credentialStore.DeleteAsync(profile.Id, cancellationToken);
+            connectionProfiles = await connectionProfileService.ListAsync(cancellationToken);
+            HasSavedPasswordForProfile = false;
+            OperationMessage = AppStrings.PasswordForgottenForProfile;
+        }
+        catch (Exception ex)
+        {
+            OperationMessage = ex.Message;
+        }
     }
 
     private static CredentialSecret? CreateSecretCopy(byte[]? bytes)
     {
         return bytes is null ? null : CredentialSecret.FromBytes(bytes);
+    }
+
+    private void StoreActiveSessionCredential(byte[]? bytes)
+    {
+        ClearActiveSessionCredential();
+        activeSessionCredentialBytes = bytes is null ? null : bytes.ToArray();
+    }
+
+    private void ClearActiveSessionCredential()
+    {
+        if (activeSessionCredentialBytes is not null)
+        {
+            Array.Clear(activeSessionCredentialBytes);
+            activeSessionCredentialBytes = null;
+        }
+    }
+
+    public void ClearSessionCredentialForShutdown()
+    {
+        ClearActiveSessionCredential();
     }
 
     private async Task PersistMonitoringSnapshotAsync(MonitoringSnapshot snapshot)

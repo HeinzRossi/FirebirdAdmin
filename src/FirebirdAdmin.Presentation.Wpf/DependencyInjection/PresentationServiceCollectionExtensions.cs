@@ -7,6 +7,7 @@ using FirebirdAdmin.Presentation.Wpf.Shell;
 using FirebirdAdmin.Presentation.Wpf.Monitoring;
 using FirebirdAdmin.Presentation.Wpf.Profiler;
 using FirebirdAdmin.Presentation.Wpf.Security;
+using FirebirdAdmin.Presentation.Wpf.Theme;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FirebirdAdmin.Presentation.Wpf.DependencyInjection;
@@ -24,6 +25,7 @@ public static class PresentationServiceCollectionExtensions
         services.AddSingleton<MetadataExplorerViewModel>();
         services.AddSingleton<MaintenanceWorkspaceViewModel>();
         services.AddSingleton<SecurityWorkspaceViewModel>();
+        services.AddSingleton<IThemeService, ThemeService>();
         services.AddSingleton<MainWindow>();
 
         return services;

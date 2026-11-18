@@ -11,4 +11,5 @@ public sealed record ProfilerEvent(
     string? Sql,
     ProfilerMetrics Metrics,
     string? Plan = null,
-    string RawTrace = "");
+    string RawTrace = "",
+    string? ClientProcessPath = null);

@@ -14,6 +14,8 @@ public sealed class HistoryWorkspaceViewModelTests
 
         viewModel.Rows.Should().BeEmpty();
         viewModel.Message.Should().Contain("Histórico");
+        viewModel.DataKindOptions.Should().Contain(option => option.Label == "Eventos Trace" && option.Value == HistoryDataKind.TraceEvents.ToString());
+        viewModel.DataKindOptions.Should().Contain(option => option.Label == "Snapshots de monitoramento" && option.Value == HistoryDataKind.MonitoringSnapshots.ToString());
     }
 
     [Fact]
@@ -37,10 +39,27 @@ public sealed class HistoryWorkspaceViewModelTests
         viewModel.Message.Should().Contain("Exportado");
     }
 
+    [Fact]
+    public async Task SearchAsync_ShouldUseMonitoringKind_WhenSelectedFromCombo()
+    {
+        var queryService = new FakeHistoryQueryService();
+        var viewModel = new HistoryWorkspaceViewModel(queryService, new FakeHistoryExportService())
+        {
+            DataKind = HistoryDataKind.MonitoringSnapshots.ToString()
+        };
+
+        await viewModel.SearchAsync();
+
+        queryService.LastKind.Should().Be(HistoryDataKind.MonitoringSnapshots);
+    }
+
     private sealed class FakeHistoryQueryService : IHistoryQueryService
     {
+        public HistoryDataKind? LastKind { get; private set; }
+
         public Task<HistoryPage<TraceEventHistoryItem>> QueryTraceEventsAsync(HistoryQuery query, CancellationToken cancellationToken)
         {
+            LastKind = query.Kind;
             TraceEventHistoryItem[] items =
             [
                 new(1, null, 1, DateTimeOffset.UtcNow, TraceEventType.StatementFinished, TimeSpan.FromMilliseconds(1), "SYSDBA", 1, 2, "select 1", null, "raw")
@@ -50,6 +69,7 @@ public sealed class HistoryWorkspaceViewModelTests
 
         public Task<HistoryPage<MonitoringSnapshotHistoryItem>> QueryMonitoringSnapshotsAsync(HistoryQuery query, CancellationToken cancellationToken)
         {
+            LastKind = query.Kind;
             return Task.FromResult(new HistoryPage<MonitoringSnapshotHistoryItem>([], 1, 100, 0));
         }
     }

@@ -1,3 +1,30 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="Brush.App.Background" Color="#FF0E1518"/>
+    <SolidColorBrush x:Key="Brush.App.Foreground" Color="#FFE7EDF0"/>
+    <SolidColorBrush x:Key="Brush.Surface.Navigation" Color="#FF111A1E"/>
+    <SolidColorBrush x:Key="Brush.Surface.Raised" Color="#FF152025"/>
+    <SolidColorBrush x:Key="Brush.Surface.StatusBar" Color="#FF111A1E"/>
+    <SolidColorBrush x:Key="Brush.Surface.Workspace" Color="#FF172328"/>
+    <SolidColorBrush x:Key="Brush.Surface.Panel" Color="#FF1B2A30"/>
+    <SolidColorBrush x:Key="Brush.Surface.Toolbar" Color="#FF18262B"/>
+    <SolidColorBrush x:Key="Brush.Surface.Input" Color="#FF10191D"/>
+    <SolidColorBrush x:Key="Brush.Surface.Hover" Color="#FF203238"/>
+    <SolidColorBrush x:Key="Brush.Surface.Selected" Color="#FF1F4544"/>
+    <SolidColorBrush x:Key="Brush.Border.Subtle" Color="#FF2D4148"/>
+    <SolidColorBrush x:Key="Brush.Border.Strong" Color="#FF4E6871"/>
+    <SolidColorBrush x:Key="Brush.Text.Muted" Color="#FF9AAAB2"/>
+    <SolidColorBrush x:Key="Brush.Text.Subtle" Color="#FFC4CED3"/>
+    <SolidColorBrush x:Key="Brush.Text.OnAccent" Color="#FF071214"/>
+    <SolidColorBrush x:Key="Brush.Grid.Header" Color="#FF203036"/>
+    <SolidColorBrush x:Key="Brush.Grid.RowHover" Color="#FF203238"/>
+    <SolidColorBrush x:Key="Brush.Grid.RowSelected" Color="#FF1F4544"/>
+    <SolidColorBrush x:Key="Brush.Accent" Color="#FF2DD4BF"/>
+    <SolidColorBrush x:Key="Brush.Accent.Strong" Color="#FF5EEAD4"/>
+    <SolidColorBrush x:Key="Brush.Accent.Subtle" Color="#FF1F4544"/>
+    <SolidColorBrush x:Key="Brush.Focus" Color="#FF5EEAD4"/>
+    <SolidColorBrush x:Key="Brush.Status.Success" Color="#FF4ADE80"/>
+    <SolidColorBrush x:Key="Brush.Status.Warning" Color="#FFFACC15"/>
+    <SolidColorBrush x:Key="Brush.Status.Error" Color="#FFF87171"/>
+    <SolidColorBrush x:Key="Brush.Status.Info" Color="#FF60A5FA"/>
 </ResourceDictionary>

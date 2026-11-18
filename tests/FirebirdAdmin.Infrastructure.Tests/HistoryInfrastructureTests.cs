@@ -62,6 +62,25 @@ public sealed class HistoryInfrastructureTests
     }
 
     [Fact]
+    public async Task DatabaseInitializer_ShouldRecoverInvalidDatabaseFile()
+    {
+        using var root = TempDirectoryFixture.Create();
+        var paths = new ApplicationDataPaths(root.Path);
+        Directory.CreateDirectory(paths.RootDirectory);
+        await File.WriteAllTextAsync(paths.DatabasePath, "not a sqlite database");
+
+        var initializer = new DatabaseInitializer(new InfrastructureTestDbContextFactory(paths.DatabasePath, migrate: false), paths);
+
+        await initializer.StartAsync(CancellationToken.None);
+
+        Directory.EnumerateFiles(paths.BackupDirectory, "firebird-admin-recovered-*.db").Should().ContainSingle();
+        await using var dbContext = new InfrastructureTestDbContextFactory(paths.DatabasePath, migrate: false).CreateDbContext();
+        var tables = await dbContext.Database.SqlQueryRaw<string>(
+            "SELECT name AS Value FROM sqlite_master WHERE type = 'table' ORDER BY name;").ToArrayAsync();
+        tables.Should().Contain("ConnectionProfiles");
+    }
+
+    [Fact]
     public async Task WriterAndQuery_ShouldPersistAndFilterTraceEvents()
     {
         using var root = CreateInitializedRoot(out var paths);

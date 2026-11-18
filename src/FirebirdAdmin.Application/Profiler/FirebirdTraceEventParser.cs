@@ -13,6 +13,7 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
     private static readonly Regex WritesRegex = new(@"writes\s*[:=]\s*(?<value>\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex FetchesRegex = new(@"fetches\s*[:=]\s*(?<value>\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex MarksRegex = new(@"marks\s*[:=]\s*(?<value>\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex ClientProcessRegex = new(@"^\s*(?<path>.+?\.(?:exe|dll)):\d+\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline);
 
     public IReadOnlyList<ProfilerEvent> ParseBlock(string block, long startingSequence, DateTimeOffset timestamp)
     {
@@ -47,7 +48,8 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
                     ExtractLong(FetchesRegex, block),
                     ExtractLong(MarksRegex, block)),
                 plan,
-                block)
+                block,
+                ExtractClientProcessPath(block))
         ];
     }
 
@@ -67,8 +69,26 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
             block);
     }
 
+    private static string? ExtractClientProcessPath(string block)
+    {
+        var match = ClientProcessRegex.Match(block);
+        return match.Success ? match.Groups["path"].Value.Trim() : null;
+    }
+
     private static TraceEventType ResolveType(string block)
     {
+        if (block.Contains("EXECUTE_STATEMENT_FINISH", StringComparison.OrdinalIgnoreCase) ||
+            block.Contains("EXECUTE_STATEMENT_FINISHED", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraceEventType.StatementFinished;
+        }
+
+        if (block.Contains("EXECUTE_STATEMENT_START", StringComparison.OrdinalIgnoreCase) ||
+            block.Contains("PREPARE_STATEMENT", StringComparison.OrdinalIgnoreCase))
+        {
+            return TraceEventType.StatementStarted;
+        }
+
         if (block.Contains("statement", StringComparison.OrdinalIgnoreCase) &&
             (block.Contains("finish", StringComparison.OrdinalIgnoreCase) ||
              block.Contains("finished", StringComparison.OrdinalIgnoreCase) ||
@@ -100,18 +120,64 @@ public sealed class FirebirdTraceEventParser : ITraceEventParser
         var statementIndex = Array.FindIndex(lines, line => line.Contains("statement", StringComparison.OrdinalIgnoreCase));
         if (statementIndex >= 0 && statementIndex + 1 < lines.Length)
         {
-            var candidate = lines[statementIndex + 1];
-            if (candidate.Contains("select", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("insert", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("update", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("delete", StringComparison.OrdinalIgnoreCase) ||
-                candidate.Contains("execute", StringComparison.OrdinalIgnoreCase))
+            var candidate = FindSqlCandidate(lines, statementIndex + 1);
+            if (!string.IsNullOrWhiteSpace(candidate))
             {
                 return candidate;
             }
         }
 
         return null;
+    }
+
+    private static string FindSqlCandidate(string[] lines, int startIndex)
+    {
+        for (var index = startIndex; index < lines.Length; index++)
+        {
+            var candidate = lines[index];
+            if (!IsSqlStart(candidate))
+            {
+                continue;
+            }
+
+            var sqlLines = new List<string> { candidate };
+            for (var sqlIndex = index + 1; sqlIndex < lines.Length; sqlIndex++)
+            {
+                var sqlLine = lines[sqlIndex];
+                if (IsTraceSqlTerminator(sqlLine))
+                {
+                    break;
+                }
+
+                sqlLines.Add(sqlLine);
+            }
+
+            return string.Join(Environment.NewLine, sqlLines).Trim();
+        }
+
+        return string.Empty;
+    }
+
+    private static bool IsSqlStart(string line)
+    {
+        return line.StartsWith("select", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("insert", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("update", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("delete", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("execute", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("with", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("merge", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTraceSqlTerminator(string line)
+    {
+        return line.Length > 0 && line.All(character => character == '^') ||
+               line.StartsWith("plan", StringComparison.OrdinalIgnoreCase) ||
+               line.Contains("record", StringComparison.OrdinalIgnoreCase) && line.Contains("fetched", StringComparison.OrdinalIgnoreCase) ||
+               line.Contains("ms,", StringComparison.OrdinalIgnoreCase) && line.Contains("fetch", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("table", StringComparison.OrdinalIgnoreCase) && line.Contains("natural", StringComparison.OrdinalIgnoreCase) ||
+               line.StartsWith("TRACE_", StringComparison.OrdinalIgnoreCase) ||
+               line.Contains("EXECUTE_STATEMENT_", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ExtractPlan(string block)

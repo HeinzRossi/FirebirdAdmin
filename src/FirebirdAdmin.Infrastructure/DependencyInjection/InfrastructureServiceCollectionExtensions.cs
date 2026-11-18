@@ -15,6 +15,7 @@ using FirebirdAdmin.Infrastructure.Monitoring;
 using FirebirdAdmin.Infrastructure.Persistence;
 using FirebirdAdmin.Infrastructure.Profiler;
 using FirebirdAdmin.Infrastructure.Security;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,8 +31,14 @@ public static class InfrastructureServiceCollectionExtensions
         {
             var paths = serviceProvider.GetRequiredService<ApplicationDataPaths>();
             Directory.CreateDirectory(paths.RootDirectory);
+            var connectionString = new SqliteConnectionStringBuilder
+            {
+                DataSource = paths.DatabasePath,
+                Pooling = false,
+                Mode = SqliteOpenMode.ReadWriteCreate
+            }.ToString();
             options
-                .UseSqlite($"Data Source={paths.DatabasePath};Pooling=False")
+                .UseSqlite(connectionString)
                 .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
 

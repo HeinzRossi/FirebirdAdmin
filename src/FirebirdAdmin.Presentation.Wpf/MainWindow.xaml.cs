@@ -1,8 +1,14 @@
 using FirebirdAdmin.Presentation.Wpf.Shell;
+using FirebirdAdmin.Presentation.Wpf.Resources;
 using ScottPlot;
 using ScottPlot.WPF;
+using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Media;
+using System.Windows;
 
 namespace FirebirdAdmin.Presentation.Wpf;
 
@@ -11,6 +17,8 @@ public partial class MainWindow
     private readonly ShellViewModel viewModel;
     private WpfPlot? activityPlot;
     private PasswordBox? passwordInput;
+    private Rect? restoreBoundsBeforeOperationalMaximize;
+    private bool isOperationalMaximized;
 
     public MainWindow(ShellViewModel viewModel)
     {
@@ -18,12 +26,45 @@ public partial class MainWindow
         InitializeComponent();
         DataContext = viewModel;
         viewModel.Dashboard.ActivityChanged += Dashboard_OnActivityChanged;
+        viewModel.PropertyChanged += ShellViewModel_OnPropertyChanged;
+        Loaded += MainWindow_OnLoaded;
+        Closed += MainWindow_OnClosed;
         UpdateActivityPlot();
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            await viewModel.LoadInitialProfileAsync();
+            await RefreshPasswordBoxFromProfileAsync();
+        }
+        catch (Exception ex)
+        {
+            viewModel.OperationMessage = ex.Message;
+        }
     }
 
     private void Dashboard_OnActivityChanged(object? sender, EventArgs e)
     {
         UpdateActivityPlot();
+    }
+
+    private void ShellViewModel_OnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ShellViewModel.CurrentTheme))
+        {
+            UpdateActivityPlot();
+            return;
+        }
+
+        if (e.PropertyName is nameof(ShellViewModel.ProfileName) or
+            nameof(ShellViewModel.HasSavedPasswordForProfile) or
+            nameof(ShellViewModel.ActiveConnection))
+        {
+            _ = RefreshPasswordBoxFromProfileAsync();
+        }
     }
 
     private void UpdateActivityPlot()
@@ -37,11 +78,59 @@ public partial class MainWindow
         var values = viewModel.Dashboard.GetActivityValues();
         if (values.Length > 0)
         {
-            activityPlot.Plot.Add.Signal(values);
+            var signal = activityPlot.Plot.Add.Signal(values);
+            signal.LineColor = GetPlotColor("Brush.Accent");
+            signal.LineWidth = 2;
+            signal.MarkerColor = GetPlotColor("Brush.Accent.Strong");
+            signal.MarkerSize = 0;
         }
 
+        ApplyActivityPlotTheme();
         activityPlot.Plot.Axes.AutoScale();
         activityPlot.Refresh();
+    }
+
+    private void ApplyActivityPlotTheme()
+    {
+        if (activityPlot is null)
+        {
+            return;
+        }
+
+        var panel = GetPlotColor("Brush.Surface.Panel");
+        var data = GetPlotColor("Brush.Surface.Input");
+        var text = GetPlotColor("Brush.Text.Subtle");
+        var border = GetPlotColor("Brush.Border.Subtle");
+
+        activityPlot.Background = FindResource("Brush.Surface.Panel") as Brush;
+        activityPlot.Plot.FigureBackground.Color = panel;
+        activityPlot.Plot.DataBackground.Color = data;
+        activityPlot.Plot.Axes.Color(text);
+        activityPlot.Plot.Axes.FrameColor(border);
+
+        var grid = activityPlot.Plot.Grid;
+        grid.MajorLineColor = border;
+        grid.MinorLineColor = border.WithAlpha(0.35);
+    }
+
+    private ScottPlot.Color GetPlotColor(string resourceKey)
+    {
+        if (TryFindResource(resourceKey) is SolidColorBrush brush)
+        {
+            var color = brush.Color;
+            return new ScottPlot.Color(color.R, color.G, color.B, color.A);
+        }
+
+        return ScottPlot.Colors.Gray;
+    }
+
+    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    {
+        viewModel.Dashboard.ActivityChanged -= Dashboard_OnActivityChanged;
+        viewModel.PropertyChanged -= ShellViewModel_OnPropertyChanged;
+        viewModel.ClearSessionCredentialForShutdown();
+        Loaded -= MainWindow_OnLoaded;
+        Closed -= MainWindow_OnClosed;
     }
 
     private string CurrentPassword => passwordInput?.Password ?? string.Empty;
@@ -76,6 +165,13 @@ public partial class MainWindow
 
         if (e.Key == Key.Escape)
         {
+            if (viewModel.IsAboutOpen)
+            {
+                viewModel.CloseAbout();
+                e.Handled = true;
+                return;
+            }
+
             viewModel.CancelCurrentWorkspaceAction();
             e.Handled = true;
         }
@@ -98,6 +194,7 @@ public partial class MainWindow
     private void PasswordInput_OnLoaded(object sender, System.Windows.RoutedEventArgs e)
     {
         passwordInput = (PasswordBox)sender;
+        _ = RefreshPasswordBoxFromProfileAsync();
     }
 
     private void PasswordInput_OnUnloaded(object sender, System.Windows.RoutedEventArgs e)
@@ -105,6 +202,30 @@ public partial class MainWindow
         if (ReferenceEquals(passwordInput, sender))
         {
             passwordInput = null;
+        }
+    }
+
+    private async Task RefreshPasswordBoxFromProfileAsync()
+    {
+        if (passwordInput is null)
+        {
+            return;
+        }
+
+        if (passwordInput.IsKeyboardFocusWithin)
+        {
+            return;
+        }
+
+        try
+        {
+            using var secret = await viewModel.LoadPasswordForCurrentProfileAsync();
+            passwordInput.Password = secret?.RevealAsString() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            viewModel.OperationMessage = ex.Message;
+            passwordInput.Password = string.Empty;
         }
     }
 
@@ -123,6 +244,21 @@ public partial class MainWindow
         await viewModel.ConnectAsync(CurrentPassword);
     }
 
+    private void SelectDatabaseButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = AppStrings.SelectDatabaseDialogTitle,
+            Filter = "Bancos Firebird (*.fdb;*.gdb)|*.fdb;*.gdb|Todos os arquivos (*.*)|*.*",
+            CheckFileExists = true
+        };
+
+        if (dialog.ShowDialog(this) == true)
+        {
+            viewModel.Database = dialog.FileName;
+        }
+    }
+
     private async void StartProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         await viewModel.StartProfilerAsync(CurrentPassword);
@@ -135,12 +271,7 @@ public partial class MainWindow
 
     private void PauseProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
-        viewModel.PauseProfilerView();
-    }
-
-    private void FollowProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
-    {
-        viewModel.ResumeProfilerFollow();
+        viewModel.ToggleProfilerPauseResume();
     }
 
     private void ClearProfilerButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
@@ -198,16 +329,6 @@ public partial class MainWindow
         await viewModel.MetadataExplorer.RefreshSelectedAsync();
     }
 
-    private async void MetadataBackButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
-    {
-        await viewModel.MetadataExplorer.BackAsync();
-    }
-
-    private async void MetadataForwardButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
-    {
-        await viewModel.MetadataExplorer.ForwardAsync();
-    }
-
     private async void ValidateMaintenanceButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         await viewModel.MaintenanceWorkspace.ValidateAsync();
@@ -241,5 +362,171 @@ public partial class MainWindow
     private void MarkSecurityStaleButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
     {
         viewModel.SecurityWorkspace.MarkStale();
+    }
+
+    private void ExitButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void TitleBar_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximizeRestore();
+            e.Handled = true;
+            return;
+        }
+
+        if (WindowState == WindowState.Normal && !isOperationalMaximized)
+        {
+            DragMove();
+            e.Handled = true;
+        }
+    }
+
+    private void MinimizeWindowButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        SystemCommands.MinimizeWindow(this);
+    }
+
+    private void MaximizeRestoreWindowButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        ToggleMaximizeRestore();
+    }
+
+    private void CloseWindowButton_OnClick(object sender, System.Windows.RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void Window_OnStateChanged(object? sender, EventArgs e)
+    {
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private void Window_OnSourceInitialized(object? sender, EventArgs e)
+    {
+        var workArea = GetCurrentMonitorWorkArea();
+        restoreBoundsBeforeOperationalMaximize = CreateCenteredRestoreBounds(workArea);
+        ApplyOperationalMaximize(rememberCurrentBounds: false);
+    }
+
+    private void ToggleMaximizeRestore()
+    {
+        if (isOperationalMaximized)
+        {
+            RestoreOperationalBounds();
+        }
+        else
+        {
+            ApplyOperationalMaximize(rememberCurrentBounds: true);
+        }
+
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private void UpdateMaximizeRestoreGlyph()
+    {
+        if (MaximizeRestoreGlyph is null)
+        {
+            return;
+        }
+
+        MaximizeRestoreGlyph.Text = isOperationalMaximized ? "\uE923" : "\uE922";
+    }
+
+    private void ApplyOperationalMaximize(bool rememberCurrentBounds)
+    {
+        if (rememberCurrentBounds && WindowState == WindowState.Normal && !isOperationalMaximized)
+        {
+            restoreBoundsBeforeOperationalMaximize = new Rect(Left, Top, Width, Height);
+        }
+
+        if (WindowState != WindowState.Normal)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        var workArea = GetCurrentMonitorWorkArea();
+        Left = workArea.Left;
+        Top = workArea.Top;
+        Width = workArea.Width;
+        Height = workArea.Height;
+        isOperationalMaximized = true;
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private void RestoreOperationalBounds()
+    {
+        if (WindowState != WindowState.Normal)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        var restoreBounds = restoreBoundsBeforeOperationalMaximize ?? CreateCenteredRestoreBounds(GetCurrentMonitorWorkArea());
+        Left = restoreBounds.Left;
+        Top = restoreBounds.Top;
+        Width = Math.Max(MinWidth, restoreBounds.Width);
+        Height = Math.Max(MinHeight, restoreBounds.Height);
+        isOperationalMaximized = false;
+        UpdateMaximizeRestoreGlyph();
+    }
+
+    private Rect CreateCenteredRestoreBounds(Rect workArea)
+    {
+        var width = Math.Min(Math.Max(MinWidth, Width), workArea.Width);
+        var height = Math.Min(Math.Max(MinHeight, Height), workArea.Height);
+        var left = workArea.Left + Math.Max(0, (workArea.Width - width) / 2);
+        var top = workArea.Top + Math.Max(0, (workArea.Height - height) / 2);
+        return new Rect(left, top, width, height);
+    }
+
+    private Rect GetCurrentMonitorWorkArea()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        var monitor = MonitorFromWindow(handle, MonitorDefaultToNearest);
+        var monitorInfo = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+
+        if (monitor != IntPtr.Zero && GetMonitorInfo(monitor, ref monitorInfo))
+        {
+            return DeviceRectToDip(monitorInfo.WorkArea);
+        }
+
+        return SystemParameters.WorkArea;
+    }
+
+    private Rect DeviceRectToDip(NativeRect rect)
+    {
+        var transform = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice ?? Matrix.Identity;
+        var topLeft = transform.Transform(new Point(rect.Left, rect.Top));
+        var bottomRight = transform.Transform(new Point(rect.Right, rect.Bottom));
+        return new Rect(topLeft, bottomRight);
+    }
+
+    private const int MonitorDefaultToNearest = 2;
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, int flags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool GetMonitorInfo(IntPtr monitorHandle, ref MonitorInfo monitorInfo);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MonitorInfo
+    {
+        public int Size;
+        public NativeRect MonitorArea;
+        public NativeRect WorkArea;
+        public int Flags;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private readonly struct NativeRect
+    {
+        public readonly int Left;
+        public readonly int Top;
+        public readonly int Right;
+        public readonly int Bottom;
     }
 }
